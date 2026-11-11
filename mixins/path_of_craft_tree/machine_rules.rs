@@ -1,7 +1,7 @@
 // What other mods' machines report to the tree, free of game types. A machine mod (RustCraft)
 // runs the console command `pct-machine <report>` through `native_run_mod_command`; without this
-// mod the command is simply unknown, so neither mod needs the other to build. The contract is
-// written for the machine mod in RustCraft's docs/design/path-of-craft-tree-contract.md.
+// mod the command is simply unknown, so neither mod needs the other to build. The contract for
+// machine mods is docs/machine-reports.md.
 
 /// The console command the reports arrive by.
 pub const COMMAND: &str = "pct-machine";
@@ -64,6 +64,12 @@ impl<'a> Words<'a> {
                 .map_err(|_| format!("{name} {word} is not a whole number"))
         };
         Ok([axis("x")?, axis("y")?, axis("z")?])
+    }
+
+    fn int(&mut self, what: &str) -> Result<i32, String> {
+        let word = self.word(what)?;
+        word.parse::<i32>()
+            .map_err(|_| format!("{what} {word} is not a whole number"))
     }
 
     fn whole(&mut self, what: &str) -> Result<u32, String> {
@@ -130,6 +136,81 @@ pub enum Report {
         entity: u32,
         kind: String,
     },
+    /// A player's own ranged weapon from the machine mod (an energy rifle) killed mob `entity`:
+    /// the player earns in full, as for a bow, since the shot was theirs.
+    Shot {
+        player: u128,
+        entity: u32,
+        kind: String,
+    },
+    /// The machine caught `count` of `item`; the tree's lists say fish, treasure or junk.
+    Fish {
+        owner: u128,
+        item: String,
+        count: u32,
+    },
+    /// The machine milked cow `entity`, which then rests as after a player's bucket.
+    Milk { owner: u128, entity: u32 },
+    /// The machine placed `block` at `pos` as part of a building: it is marked as placed and pays
+    /// the building branch where nobody built in the last day, as a player's block does.
+    Build {
+        owner: u128,
+        dimension: String,
+        pos: [i32; 3],
+        block: String,
+    },
+    /// The machine entered chunk `x`, `z` (chunk coordinates) of `dimension`.
+    Chunk {
+        owner: u128,
+        dimension: String,
+        x: i32,
+        z: i32,
+    },
+    /// The machine found `biome`.
+    Biome { owner: u128, biome: String },
+    /// The machine found `structure`.
+    Structure { owner: u128, structure: String },
+    /// Work paid by one action of the tree, `times` over: repairs, breeding, shearing, honey,
+    /// brushing, brews and enchanting levels.
+    Work { owner: u128, work: Work, times: u32 },
+}
+
+/// The kinds of work a [`Report::Work`] counts, each with the word it is sent as.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Work {
+    /// Count: items repaired.
+    Repair,
+    /// Count: babies born.
+    Breed,
+    /// Count: animals sheared.
+    Shear,
+    /// Count: hives emptied.
+    Honey,
+    /// Count: suspicious blocks brushed.
+    Brush,
+    /// Count: brewing runs finished, each a stand of three bottles.
+    Brew,
+    /// Count: enchanting levels charged, as a table would charge them (1 to 3 an item).
+    Enchant,
+}
+
+impl Work {
+    const ALL: [(&'static str, Work); 7] = [
+        ("repair", Work::Repair),
+        ("breed", Work::Breed),
+        ("shear", Work::Shear),
+        ("honey", Work::Honey),
+        ("brush", Work::Brush),
+        ("brew", Work::Brew),
+        ("enchant", Work::Enchant),
+    ];
+
+    fn from_word(word: &str) -> Option<Work> {
+        Self::ALL
+            .iter()
+            .find(|(name, _)| *name == word)
+            .map(|(_, work)| *work)
+    }
 }
 
 /// Reads the words after the command name.
@@ -165,7 +246,48 @@ pub fn parse(line: &str) -> Result<Report, String> {
             entity: words.whole("entity")?,
             kind: words.text("kind")?,
         },
-        other => return Err(format!("unknown report {other}")),
+        "shot" => Report::Shot {
+            player: words.owner()?,
+            entity: words.whole("entity")?,
+            kind: words.text("kind")?,
+        },
+        "fish" => Report::Fish {
+            owner: words.owner()?,
+            item: words.text("item")?,
+            count: words.count("count")?,
+        },
+        "milk" => Report::Milk {
+            owner: words.owner()?,
+            entity: words.whole("entity")?,
+        },
+        "build" => Report::Build {
+            owner: words.owner()?,
+            dimension: words.text("dimension")?,
+            pos: words.pos()?,
+            block: words.text("block")?,
+        },
+        "chunk" => Report::Chunk {
+            owner: words.owner()?,
+            dimension: words.text("dimension")?,
+            x: words.int("chunk x")?,
+            z: words.int("chunk z")?,
+        },
+        "biome" => Report::Biome {
+            owner: words.owner()?,
+            biome: words.text("biome")?,
+        },
+        "structure" => Report::Structure {
+            owner: words.owner()?,
+            structure: words.text("structure")?,
+        },
+        other => match Work::from_word(other) {
+            Some(work) => Report::Work {
+                owner: words.owner()?,
+                work,
+                times: words.count("count")?,
+            },
+            None => return Err(format!("unknown report {other}")),
+        },
     };
     words.end(report)
 }
@@ -240,6 +362,87 @@ mod tests {
     }
 
     #[test]
+    fn shot_fish_milk_and_build_reports_read_back() {
+        assert_eq!(
+            parse("shot 0123abcd456789ef0123456789abcdef 77 minecraft:skeleton"),
+            Ok(Report::Shot {
+                player: OWNER,
+                entity: 77,
+                kind: "minecraft:skeleton".to_owned(),
+            })
+        );
+        assert_eq!(
+            parse("fish 0123abcd456789ef0123456789abcdef minecraft:cod 2"),
+            Ok(Report::Fish {
+                owner: OWNER,
+                item: "minecraft:cod".to_owned(),
+                count: 2,
+            })
+        );
+        assert_eq!(
+            parse("milk 0123abcd456789ef0123456789abcdef 512"),
+            Ok(Report::Milk {
+                owner: OWNER,
+                entity: 512,
+            })
+        );
+        assert_eq!(
+            parse(
+                "build 0123abcd456789ef0123456789abcdef minecraft:overworld 4 70 -8 \
+                 minecraft:stone_bricks"
+            ),
+            Ok(Report::Build {
+                owner: OWNER,
+                dimension: "minecraft:overworld".to_owned(),
+                pos: [4, 70, -8],
+                block: "minecraft:stone_bricks".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn discovery_reports_read_back() {
+        assert_eq!(
+            parse("chunk 0123abcd456789ef0123456789abcdef minecraft:the_nether -3 12"),
+            Ok(Report::Chunk {
+                owner: OWNER,
+                dimension: "minecraft:the_nether".to_owned(),
+                x: -3,
+                z: 12,
+            })
+        );
+        assert_eq!(
+            parse("biome 0123abcd456789ef0123456789abcdef minecraft:cherry_grove"),
+            Ok(Report::Biome {
+                owner: OWNER,
+                biome: "minecraft:cherry_grove".to_owned(),
+            })
+        );
+        assert_eq!(
+            parse("structure 0123abcd456789ef0123456789abcdef minecraft:village_plains"),
+            Ok(Report::Structure {
+                owner: OWNER,
+                structure: "minecraft:village_plains".to_owned(),
+            })
+        );
+    }
+
+    #[test]
+    fn every_work_word_reads_back_with_its_count() {
+        for (word, work) in Work::ALL {
+            assert_eq!(
+                parse(&format!("{word} 0123abcd456789ef0123456789abcdef 3")),
+                Ok(Report::Work {
+                    owner: OWNER,
+                    work,
+                    times: 3,
+                }),
+                "{word}"
+            );
+        }
+    }
+
+    #[test]
     fn every_tool_word_is_known_and_others_are_refused() {
         for (word, tool) in [
             ("pickaxe", Tool::Pickaxe),
@@ -265,6 +468,13 @@ mod tests {
             "break 0123abcd456789ef0123456789abcdef minecraft:overworld 1 2 minecraft:stone pickaxe",
             "kill 0123abcd456789ef0123456789abcdef 4021 minecraft:zombie extra",
             "craft 0123abcd456789ef0123456789abcdef minecraft:paper minecraft:paper 9 0",
+            "brew 0123abcd456789ef0123456789abcdef 0",
+            "honey 0123abcd456789ef0123456789abcdef",
+            "enchant 0123abcd456789ef0123456789abcdef 3 minecraft:book",
+            "milk 0123abcd456789ef0123456789abcdef",
+            "chunk 0123abcd456789ef0123456789abcdef minecraft:overworld 1.5 2",
+            "biome 0123abcd456789ef0123456789abcdef",
+            "shot 0123abcd456789ef0123456789abcdef -4 minecraft:zombie",
         ] {
             assert!(parse(line).is_err(), "accepted {line:?}");
         }

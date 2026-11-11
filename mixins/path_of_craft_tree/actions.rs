@@ -3,6 +3,7 @@ use crate::game::{
     Game,
     native_hooks::NativeLootDrops,
     pct_effects as effects, pct_glue as glue,
+    pct_machine_rules::Work,
     pct_mining::player_effects,
     pct_rules::{Profile, Tree},
 };
@@ -147,14 +148,18 @@ pub fn on_item_picked_up(game: &mut Game<'_>, player: u128, item: &str, count: u
         return;
     };
     let tree = &loaded.tree;
-    let action = if tree.in_list("fish", item) {
+    let action = catch_action(tree, item);
+    earn(game, tree, player, action, f64::from(count), None);
+}
+
+fn catch_action(tree: &Tree, item: &str) -> &'static str {
+    if tree.in_list("fish", item) {
         "act:fish"
     } else if tree.in_list("treasure", item) {
         "act:treasure"
     } else {
         "act:junk"
-    };
-    earn(game, tree, player, action, f64::from(count), None);
+    }
 }
 
 /// For machines a player built: the tree's machine share of `action`'s experience. Experience
@@ -257,6 +262,88 @@ pub fn on_machine_kill(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str
     earn(game, tree, owner, "act:shot", times, None);
 }
 
+/// A player's own ranged weapon from a machine mod killed mob `entity`: paid in full, as a bow.
+pub fn on_reported_shot(game: &mut Game<'_>, player: u128, entity: u32, kind: &str) {
+    earn_mob_shot(game, player, entity, kind);
+}
+
+/// A machine caught `count` of `item`: the owner earns as for their own rod's catch.
+pub fn on_machine_fish(game: &mut Game<'_>, owner: u128, item: &str, count: u32) {
+    let Some(loaded) = glue::current_tree() else {
+        return;
+    };
+    let action = catch_action(&loaded.tree, item);
+    earn_for_owner(game, owner, action, f64::from(count));
+}
+
+/// A machine milked cow `entity`: it pays as a player's bucket does, once per cow's rest.
+pub fn on_machine_milk(game: &mut Game<'_>, owner: u128, entity: u32) {
+    if milk_ready(entity as i32) {
+        earn_for_owner(game, owner, "act:milk", 1.0);
+    }
+}
+
+/// Paid work of a machine: `action` `times` over at the machine share.
+pub fn on_machine_work(game: &mut Game<'_>, owner: u128, work: Work, times: u32) {
+    let times = f64::from(times);
+    let (action, times) = match work {
+        Work::Repair => ("act:repair", times),
+        Work::Breed => ("act:breed", times),
+        Work::Shear => ("act:shear", times),
+        Work::Honey => ("act:honey", times),
+        Work::Brush => ("act:brush", times),
+        Work::Brew => ("act:brew", times * BOTTLES_PER_BREW),
+        Work::Enchant => ("act:enchant", times),
+    };
+    earn_for_owner(game, owner, action, times);
+}
+
+/// A machine built `block` at `pos`: marked as placed, and paid where nobody built in the last
+/// day, the same rule and the same memory as a player's blocks.
+pub fn on_machine_build(
+    game: &mut Game<'_>,
+    owner: u128,
+    dimension: &str,
+    pos: [i32; 3],
+    block: &str,
+) {
+    crate::game::pct_mining::on_machine_place(game, dimension, pos, block);
+    let Some(loaded) = glue::current_tree() else {
+        return;
+    };
+    if let Some(action) = build_action(&loaded.tree, block)
+        && first_build_here(dimension, pos)
+    {
+        earn_for_owner(game, owner, action, 1.0);
+    }
+}
+
+/// A machine entered a chunk. It counts against the owner's own visited chunks both ways, and
+/// only while they are online, as their visited chunks are loaded then.
+pub fn on_machine_chunk(game: &mut Game<'_>, owner: u128, dimension: &str, x: i32, z: i32) {
+    let is_new = {
+        let mut state = state();
+        let Some(visited) = state.visited.get_mut(&owner) else {
+            return;
+        };
+        let is_new = visited.insert((dimension.to_owned(), x, z));
+        if is_new {
+            state.dirty_chunks.insert(owner);
+        }
+        is_new
+    };
+    if is_new {
+        earn_for_owner(game, owner, "act:chunk", 1.0);
+    }
+}
+
+/// A machine found a biome or a structure: once per owner, shared with what they found themselves.
+pub fn on_machine_discovery(game: &mut Game<'_>, owner: u128, key: String, action: &str) {
+    if mark_first(owner, key) {
+        earn_for_owner(game, owner, action, 1.0);
+    }
+}
+
 // Animals.
 
 pub fn earn_once(game: &mut Game<'_>, player: u128, action: &str, times: f64) {
@@ -289,20 +376,22 @@ pub fn on_interact_entity(game: &mut Game<'_>, entity: i32, kind: &str, stack: O
     if !milking {
         return;
     }
-    let ready = {
-        let mut state = state();
-        let ready = state
-            .milked
-            .get(&entity)
-            .is_none_or(|at| at.elapsed() >= MILK_COOLDOWN);
-        if ready {
-            state.milked.insert(entity, Instant::now());
-        }
-        ready
-    };
-    if let (true, Some(player)) = (ready, acting_uuid(game)) {
+    if let (true, Some(player)) = (milk_ready(entity), acting_uuid(game)) {
         earn_once(game, player, "act:milk", 1.0);
     }
+}
+
+/// True when cow `entity` may pay for milk again, and starts its rest.
+fn milk_ready(entity: i32) -> bool {
+    let mut state = state();
+    let ready = state
+        .milked
+        .get(&entity)
+        .is_none_or(|at| at.elapsed() >= MILK_COOLDOWN);
+    if ready {
+        state.milked.insert(entity, Instant::now());
+    }
+    ready
 }
 
 pub fn on_use_item_on(game: &mut Game<'_>, stack: &ItemStack, pos: [i32; 3]) {

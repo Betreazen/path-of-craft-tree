@@ -58,5 +58,34 @@ fn apply(game: &mut Game<'_>, report: Report) {
             entity,
             kind,
         } => actions::on_machine_kill(game, owner, entity, &kind),
+        Report::Shot {
+            player,
+            entity,
+            kind,
+        } => actions::on_reported_shot(game, player, entity, &kind),
+        Report::Fish { owner, item, count } => actions::on_machine_fish(game, owner, &item, count),
+        Report::Milk { owner, entity } => actions::on_machine_milk(game, owner, entity),
+        Report::Build {
+            owner,
+            dimension,
+            pos,
+            block,
+        } => actions::on_machine_build(game, owner, &dimension, pos, &block),
+        Report::Chunk {
+            owner,
+            dimension,
+            x,
+            z,
+        } => actions::on_machine_chunk(game, owner, &dimension, x, z),
+        Report::Biome { owner, biome } => {
+            actions::on_machine_discovery(game, owner, format!("biome:{biome}"), "act:biome")
+        }
+        Report::Structure { owner, structure } => actions::on_machine_discovery(
+            game,
+            owner,
+            format!("structure:{structure}"),
+            "act:structure",
+        ),
+        Report::Work { owner, work, times } => actions::on_machine_work(game, owner, work, times),
     }
 }
