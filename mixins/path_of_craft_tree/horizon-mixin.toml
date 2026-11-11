@@ -1,0 +1,1799 @@
+# Path-of-craft-tree: experience for what a player does, spent on a huge passive tree.
+# The tree and all balance numbers are data: data/tree.json, written by the example generator.
+[mod]
+id = "path_of_craft_tree"
+version = "0.3.0"
+
+# The commit that adds native_player_break_block, which the Vein node needs.
+[compatibility]
+horizon_revision = "7e4e421224743469035ba0c34fc21e569e64a17d"
+
+[[module]]
+id = "effect_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_effect_rules"
+source = "effect_rules.rs"
+
+[[module]]
+id = "effects"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_effects"
+source = "effects.rs"
+
+[[module]]
+id = "rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_rules"
+source = "rules.rs"
+
+[[module]]
+id = "placed"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_placed"
+source = "placed.rs"
+
+[[module]]
+id = "view"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_view"
+source = "view.rs"
+
+[[module]]
+id = "glue"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_glue"
+source = "glue.rs"
+
+[[module]]
+id = "machine_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_machine_rules"
+source = "machine_rules.rs"
+
+[[module]]
+id = "machines"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_machines"
+source = "machines.rs"
+
+[[module]]
+id = "perf"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_perf"
+source = "perf.rs"
+
+[[module]]
+id = "ui"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_ui"
+source = "ui.rs"
+
+[[module]]
+id = "look"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_look"
+source = "look.rs"
+
+[[module]]
+id = "art"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_art"
+source = "art.rs"
+
+[[module]]
+id = "paint"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_paint"
+source = "paint.rs"
+
+[[module]]
+id = "actions"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_actions"
+source = "actions.rs"
+
+[[module]]
+id = "mining"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_mining"
+source = "mining.rs"
+
+# Server half.
+[[injection]]
+id = "net_from_client"
+hook = "net_from_client"
+hook_version = 1
+kind = "HEAD"
+helper = "net_from_client.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "channel", ty = "&str", value = "channel" },
+  { name = "data", ty = "&[u8]", value = "data" },
+]
+
+[[injection]]
+id = "player_logged_in"
+hook = "player_logged_in"
+hook_version = 1
+kind = "HEAD"
+helper = "player_logged_in.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+]
+
+[[injection]]
+id = "player_logged_out"
+hook = "player_logged_out"
+hook_version = 1
+kind = "HEAD"
+helper = "player_logged_out.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+]
+
+[[injection]]
+id = "server_stopping"
+hook = "server_stopping"
+hook_version = 1
+kind = "HEAD"
+helper = "server_stopping.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "server_tick"
+hook = "server_tick"
+hook_version = 1
+kind = "HEAD"
+helper = "server_tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "phase", ty = "crate::mod_api::ServerTickPhase", value = "phase" },
+]
+
+[[injection]]
+id = "destroy_block"
+hook = "destroy_block"
+hook_version = 1
+kind = "HEAD"
+helper = "destroy_block.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "place_block"
+hook = "place_block"
+hook_version = 1
+kind = "HEAD"
+helper = "place_block.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "loot_drops"
+hook = "loot_drops"
+hook_version = 1
+kind = "HEAD"
+helper = "loot_drops.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "context", ty = "&crate::game::native_hooks::NativeLootDrops<'_>", value = "context" },
+  { name = "drops", ty = "&mut Vec<horizon_client::items::ItemStack>", value = "&mut *drops" },
+]
+
+[[injection]]
+id = "item_damaged"
+hook = "item_damaged"
+hook_version = 1
+kind = "HEAD"
+helper = "item_damaged.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "amount", ty = "&mut i32", value = "&mut *amount" },
+  { name = "cancel", ty = "&mut bool", value = "&mut *cancel" },
+]
+
+[[injection]]
+id = "break_speed"
+target = "horizon_client::game::native_hooks::Game<'_>::native_break_speed"
+kind = "HEAD"
+helper = "break_speed.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "speed", ty = "&mut f32", value = "&mut *speed" },
+]
+
+# Client half.
+[[injection]]
+id = "net_from_server"
+hook = "net_from_server"
+hook_version = 1
+kind = "HEAD"
+helper = "net_from_server.rs"
+bindings = [
+  { name = "channel", ty = "&str", value = "channel" },
+  { name = "data", ty = "&[u8]", value = "data" },
+]
+
+[[injection]]
+id = "key"
+hook = "key"
+hook_version = 1
+kind = "HEAD"
+helper = "key.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+# Reports from other mods' machines arrive as the console command `pct-machine`.
+[[injection]]
+id = "register_commands"
+hook = "register_commands"
+hook_version = 1
+kind = "HEAD"
+helper = "register_commands.rs"
+bindings = [
+  { name = "commands", ty = "&mut Vec<crate::mod_api::NativeCommand>", value = "&mut *commands" },
+]
+
+[[injection]]
+id = "console_command"
+hook = "perform_console_command"
+hook_version = 1
+kind = "HEAD"
+helper = "console_command.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "command", ty = "&str", value = "command" },
+  { name = "ran", ty = "&mut bool", value = "&mut *ran" },
+]
+
+[[injection]]
+id = "command"
+hook = "command"
+hook_version = 1
+kind = "HEAD"
+helper = "command.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "command", ty = "&str", value = "command" },
+  { name = "ran", ty = "&mut bool", value = "&mut *ran" },
+]
+
+[[injection]]
+id = "frame"
+hook = "frame"
+hook_version = 1
+kind = "HEAD"
+helper = "frame.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "screen_render_post"
+hook = "screen_render_post"
+hook_version = 1
+kind = "HEAD"
+helper = "screen_render_post.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+]
+
+[[injection]]
+id = "screen_mouse_button_pressed_pre"
+hook = "screen_mouse_button_pressed_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "screen_mouse_button_pressed_pre.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "button", ty = "i32", value = "button" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "screen_mouse_button_released_pre"
+hook = "screen_mouse_button_released_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "screen_mouse_button_released_pre.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "button", ty = "i32", value = "button" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "screen_mouse_dragged_pre"
+hook = "screen_mouse_dragged_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "screen_mouse_dragged_pre.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "button", ty = "i32", value = "button" },
+  { name = "delta", ty = "[f32; 2]", value = "delta" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "screen_mouse_scrolled_pre"
+hook = "screen_mouse_scrolled_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "screen_mouse_scrolled_pre.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "scroll", ty = "[f64; 2]", value = "scroll" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "player_fish"
+hook = "player_fish"
+hook_version = 1
+kind = "HEAD"
+helper = "player_fish.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "state", ty = "i32", value = "state" },
+]
+
+[[injection]]
+id = "item_picked_up"
+hook = "item_picked_up"
+hook_version = 1
+kind = "HEAD"
+helper = "item_picked_up.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "count", ty = "u32", value = "count" },
+]
+
+[[injection]]
+id = "player_shear_entity"
+hook = "player_shear_entity"
+hook_version = 1
+kind = "HEAD"
+helper = "player_shear_entity.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+]
+
+[[injection]]
+id = "interact_entity"
+hook = "interact_entity"
+hook_version = 1
+kind = "HEAD"
+helper = "interact_entity.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "entity", ty = "i32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "stack", ty = "Option<&horizon_client::items::ItemStack>", value = "stack" },
+]
+
+[[injection]]
+id = "use_item_on"
+hook = "use_item_on"
+hook_version = 1
+kind = "HEAD"
+helper = "use_item_on.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "furnace_extract"
+hook = "furnace_extract"
+hook_version = 1
+kind = "HEAD"
+helper = "furnace_extract.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "count", ty = "u32", value = "count" },
+]
+
+[[injection]]
+id = "item_crafted"
+hook = "item_crafted"
+hook_version = 1
+kind = "HEAD"
+helper = "item_crafted.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "recipe", ty = "&str", value = "recipe" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+[[injection]]
+id = "anvil_craft_post"
+hook = "anvil_craft_post"
+hook_version = 1
+kind = "HEAD"
+helper = "anvil_craft_post.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "craft", ty = "&horizon_client::menu::AnvilCraft", value = "craft" },
+]
+
+[[injection]]
+id = "enchant_item"
+hook = "enchant_item"
+hook_version = 1
+kind = "HEAD"
+helper = "enchant_item.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "levels", ty = "i32", value = "levels" },
+]
+
+[[injection]]
+id = "living_entity_use_item_finish"
+hook = "living_entity_use_item_finish"
+hook_version = 1
+kind = "HEAD"
+helper = "living_entity_use_item_finish.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+[[injection]]
+id = "player_container_open"
+hook = "player_container_open"
+hook_version = 1
+kind = "HEAD"
+helper = "player_container_open.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "menu", ty = "&str", value = "menu" },
+  { name = "pos", ty = "Option<[i32; 3]>", value = "pos" },
+]
+
+[[injection]]
+id = "brewing_complete"
+hook = "brewing_complete"
+hook_version = 1
+kind = "HEAD"
+helper = "brewing_complete.rs"
+bindings = [
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "mob_killed"
+hook = "mob_killed"
+hook_version = 1
+kind = "HEAD"
+helper = "mob_killed.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "entity", ty = "u32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+]
+
+[[injection]]
+id = "living_incoming_damage"
+hook = "living_incoming_damage"
+hook_version = 1
+kind = "HEAD"
+helper = "living_incoming_damage.rs"
+bindings = [
+  { name = "entity", ty = "i32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "damage_type", ty = "&str", value = "damage_type" },
+  { name = "amount", ty = "&mut f32", value = "&mut *amount" },
+]
+
+[[injection]]
+id = "player_advancement_done"
+hook = "player_advancement_done"
+hook_version = 1
+kind = "HEAD"
+helper = "player_advancement_done.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "advancement", ty = "&str", value = "advancement" },
+]
+
+[[injection]]
+id = "player_changed_dimension"
+hook = "player_changed_dimension"
+hook_version = 1
+kind = "HEAD"
+helper = "player_changed_dimension.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "to", ty = "&str", value = "to" },
+]
+
+[[injection]]
+id = "trade_with_villager"
+hook = "trade_with_villager"
+hook_version = 1
+kind = "HEAD"
+helper = "trade_with_villager.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "player_tick"
+hook = "player_tick"
+hook_version = 1
+kind = "HEAD"
+helper = "player_tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "right_click_block"
+hook = "right_click_block"
+hook_version = 1
+kind = "HEAD"
+helper = "right_click_block.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+# The engine skips these two announcements unless a trait mod is loaded. Trait-mod mode for the
+# whole game would slow every tick, so the mod listens at these two places directly.
+[[injection]]
+id = "breed_listens"
+target = "horizon_client::game::creatures::Game<'_>::breed"
+kind = "HEAD"
+helper = "breed_listens.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "parent", ty = "u32", value = "parent" },
+  { name = "partner", ty = "u32", value = "partner" },
+]
+
+[[injection]]
+id = "anvil_listens"
+target = "horizon_client::game::lan_stations::Game<'_>::lan_station_op"
+kind = "HEAD"
+helper = "anvil_listens.rs"
+bindings = [
+  { name = "host", ty = "&mut crate::game::lan::LanHost", value = "&mut *host" },
+  { name = "conn", ty = "u32", value = "conn" },
+]
+
+# Every kind of taming reaches this advancement trigger; the engine's tame hook only hears horses.
+[[injection]]
+id = "entity_trigger"
+target = "horizon_client::game::advancements::Game<'_>::trigger_entity"
+kind = "HEAD"
+helper = "entity_trigger.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "name", ty = "&str", value = "name" },
+]
+
+# Catalog-less engine functions: who hit whom in PvP, and the hit after armor.
+[[injection]]
+id = "player_hurt_by_player"
+target = "horizon_client::game::native_hooks::Game<'_>::native_player_hurt_by_player"
+kind = "HEAD"
+helper = "player_hurt_by_player.rs"
+bindings = [{ name = "victim_entity", ty = "i32", value = "victim_entity" }]
+
+[[injection]]
+id = "living_damage_pre"
+target = "horizon_client::game::native_hooks::Game<'_>::native_living_damage_pre"
+kind = "HEAD"
+helper = "living_damage_pre.rs"
+bindings = [
+  { name = "entity", ty = "i32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "damage_type", ty = "&str", value = "damage_type" },
+  { name = "amount", ty = "&mut f32", value = "&mut *amount" },
+]
+
+# Sector: gather
+# Gathering sector: modules and injections to append to horizon-mixin.toml.
+
+[[module]]
+id = "fx_gather_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_gather_rules"
+source = "fx_gather_rules.rs"
+
+[[module]]
+id = "fx_gather"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_gather"
+source = "fx_gather.rs"
+
+[[module]]
+id = "fx_gather_tree"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_gather_tree"
+source = "fx_gather_tree.rs"
+
+[[module]]
+id = "fx_gather_dig"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_gather_dig"
+source = "fx_gather_dig.rs"
+
+[[module]]
+id = "fx_gather_fish"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_gather_fish"
+source = "fx_gather_fish.rs"
+
+[[module]]
+id = "fx_gather_sense"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_gather_sense"
+source = "fx_gather_sense.rs"
+
+[[injection]]
+id = "fx_gather_destroy"
+hook = "destroy_block"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_gather_destroy.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+# Injections run by priority, highest first: below the default 0, this one sees the final drops.
+[[injection]]
+id = "fx_gather_loot"
+hook = "loot_drops"
+hook_version = 1
+kind = "HEAD"
+priority = -50
+helper = "fx_gather_loot.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "context", ty = "&crate::game::native_hooks::NativeLootDrops<'_>", value = "context" },
+  { name = "drops", ty = "&mut Vec<horizon_client::items::ItemStack>", value = "&mut *drops" },
+]
+
+[[injection]]
+id = "fx_gather_item_damaged"
+hook = "item_damaged"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_gather_item_damaged.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "amount", ty = "&mut i32", value = "&mut *amount" },
+  { name = "cancel", ty = "&mut bool", value = "&mut *cancel" },
+]
+
+[[injection]]
+id = "fx_gather_speed"
+target = "horizon_client::game::native_hooks::Game<'_>::native_break_speed"
+kind = "HEAD"
+helper = "fx_gather_speed.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "state", ty = "BlockStateId", value = "state" },
+  { name = "speed", ty = "&mut f32", value = "&mut *speed" },
+]
+
+[[injection]]
+id = "fx_gather_use_item_on"
+target = "horizon_client::game::native_hooks::Game<'_>::native_use_item_on"
+kind = "HEAD"
+helper = "fx_gather_use_item_on.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "face", ty = "[i32; 3]", value = "face" },
+  { name = "claimed", ty = "&mut bool", value = "&mut *claimed" },
+]
+
+# Minecraft experience from ore: the sampled amount, after every early return.
+[[injection]]
+id = "fx_gather_block_exp"
+target = "horizon_client::game::Game<'_>::block_experience"
+kind = "RETURN"
+helper = "fx_gather_block_exp.rs"
+bindings = [
+  { name = "value", ty = "u32", value = "$value" },
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "name", ty = "&str", value = "name" },
+]
+
+# War Shovel: melee damage against mobs. A player target stays untouched, so PvP is unchanged.
+[[injection]]
+id = "fx_gather_melee"
+target = "horizon_client::game::Game<'_>::melee_damage"
+kind = "RETURN"
+helper = "fx_gather_melee.rs"
+bindings = [
+  { name = "value", ty = "(f32, f32, bool, bool)", value = "$value" },
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "target_kind", ty = "&str", value = "target_kind" },
+]
+
+[[injection]]
+id = "fx_gather_hurt_enemy"
+target = "horizon_client::game::native_hooks::Game<'_>::native_hurt_enemy"
+kind = "HEAD"
+helper = "fx_gather_hurt_enemy.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "entity", ty = "u32", value = "entity" },
+]
+
+[[injection]]
+id = "fx_gather_finish"
+target = "horizon_client::game::native_hooks::Game<'_>::native_living_entity_use_item_finish"
+kind = "HEAD"
+helper = "fx_gather_finish.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "entity", ty = "Option<i32>", value = "entity" },
+]
+
+[[injection]]
+id = "fx_gather_logout"
+hook = "player_logged_out"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_gather_logout.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+]
+
+# Fishing: who reels in, what the table yields, faster bites and fishing in lava.
+[[injection]]
+id = "fx_gather_retrieve"
+target = "horizon_client::game::fishing::Game<'_>::retrieve_hook"
+kind = "HEAD"
+helper = "fx_gather_retrieve.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "fx_gather_fishing_loot"
+target = "horizon_client::game::fishing::fishing_loot"
+kind = "HEAD"
+cancellable = true
+helper = "fx_gather_fishing_loot.rs"
+bindings = [
+  { name = "loot", ty = "&horizon_world::loot::LootData", value = "loot" },
+  { name = "sequences", ty = "&mut horizon_client::random_sequences::RandomSequences", value = "&mut *sequences" },
+  { name = "level_random", ty = "&mut horizon_core::random::LegacyRandom", value = "&mut *level_random" },
+  { name = "world_seed", ty = "i64", value = "world_seed" },
+  { name = "luck", ty = "f32", value = "luck" },
+  { name = "biome", ty = "Option<&str>", value = "biome" },
+  { name = "open_water", ty = "bool", value = "open_water" },
+]
+
+[[injection]]
+id = "fx_gather_catching_fish"
+target = "horizon_client::game::fishing::Game<'_>::catching_fish"
+kind = "HEAD"
+helper = "fx_gather_catching_fish.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "h", ty = "&mut Hook", value = "&mut *h" },
+]
+
+[[injection]]
+id = "fx_gather_water_height"
+target = "horizon_client::game::fishing::Game<'_>::water_height"
+kind = "HEAD"
+cancellable = true
+helper = "fx_gather_water_height.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "x", ty = "i32", value = "x" },
+  { name = "y", ty = "i32", value = "y" },
+  { name = "z", ty = "i32", value = "z" },
+]
+
+[[injection]]
+id = "fx_gather_brush"
+target = "horizon_client::game::brush::Game<'_>::brush_block"
+kind = "HEAD"
+helper = "fx_gather_brush.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+# Client half: the Ore Sense hotkey and its outlines, and powder snow for Light Step.
+[[injection]]
+id = "fx_gather_key"
+hook = "key"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_gather_key.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+# Ore Sense: outlines drawn on top of everything, so ore shows through the rock around it. The
+# frame builds its debug gizmos here first, and debug_gizmos itself cannot take an injection.
+[[injection]]
+id = "fx_gather_ore_lines"
+target = "horizon_client::game::structure_blocks::Game<'_>::bounding_box_gizmos"
+kind = "HEAD"
+helper = "fx_gather_ore_lines.rs"
+bindings = [
+  { name = "g", ty = "&mut horizon_client::gizmos::Gizmos", value = "&mut *g" },
+]
+
+[[injection]]
+id = "fx_gather_visuals"
+hook = "visuals"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_gather_visuals.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+]
+
+[[injection]]
+id = "fx_gather_client_tick"
+hook = "tick"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_gather_client_tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+# Sector: farm
+[[module]]
+id = "fx_farm_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_farm_rules"
+source = "fx_farm_rules.rs"
+
+[[module]]
+id = "fx_farm"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_farm"
+source = "fx_farm.rs"
+
+[[module]]
+id = "fx_farm_husbandry"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_farm_husbandry"
+source = "fx_farm_husbandry.rs"
+
+[[module]]
+id = "fx_farm_cooking"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_farm_cooking"
+source = "fx_farm_cooking.rs"
+
+[[module]]
+id = "fx_farm_alchemy"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_farm_alchemy"
+source = "fx_farm_alchemy.rs"
+
+[[injection]]
+id = "fx_farm_right_click"
+hook = "right_click_block"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_right_click.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "fx_farm_use_item_on"
+hook = "use_item_on"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_use_item_on.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "face", ty = "[i32; 3]", value = "face" },
+]
+
+[[injection]]
+id = "fx_farm_place_block"
+hook = "place_block"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_place_block.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+[[injection]]
+id = "fx_farm_destroy"
+hook = "destroy_block"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_destroy.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "fx_farm_loot"
+hook = "loot_drops"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_loot.rs"
+bindings = [
+  { name = "context", ty = "&crate::game::native_hooks::NativeLootDrops<'_>", value = "context" },
+  { name = "drops", ty = "&mut Vec<horizon_client::items::ItemStack>", value = "&mut *drops" },
+]
+
+[[injection]]
+id = "fx_farm_use_finish"
+hook = "living_entity_use_item_finish"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_use_finish.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+[[injection]]
+id = "fx_farm_use_start"
+hook = "living_entity_use_item_start"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_use_start.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "duration", ty = "&mut i32", value = "&mut *duration" },
+]
+
+[[injection]]
+id = "fx_farm_furnace_extract"
+hook = "furnace_extract"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_furnace_extract.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "count", ty = "u32", value = "count" },
+]
+
+[[injection]]
+id = "fx_farm_item_crafted"
+hook = "item_crafted"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_item_crafted.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+[[injection]]
+id = "fx_farm_container_open"
+hook = "player_container_open"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_container_open.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "menu", ty = "&str", value = "menu" },
+  { name = "pos", ty = "Option<[i32; 3]>", value = "pos" },
+]
+
+[[injection]]
+id = "fx_farm_brewing_complete"
+hook = "brewing_complete"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_brewing_complete.rs"
+bindings = [{ name = "pos", ty = "[i32; 3]", value = "pos" }]
+
+[[injection]]
+id = "fx_farm_interact"
+hook = "interact_entity"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_interact.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "entity", ty = "i32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "stack", ty = "Option<&horizon_client::items::ItemStack>", value = "stack" },
+  { name = "claimed", ty = "&mut bool", value = "&mut *claimed" },
+]
+
+[[injection]]
+id = "fx_farm_moisture"
+hook = "moisture_change"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_moisture.rs"
+bindings = [
+  { name = "pos", ty = "BlockPos", value = "pos" },
+  { name = "from", ty = "i32", value = "from" },
+  { name = "to", ty = "i32", value = "to" },
+  { name = "cancel", ty = "&mut bool", value = "&mut *cancel" },
+]
+
+[[injection]]
+id = "fx_farm_use_item"
+hook = "use_item"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_farm_use_item.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+# The engine announces breeding only when a trait mod is loaded, so twins run at the breeding too.
+[[injection]]
+id = "fx_farm_breed"
+target = "horizon_client::game::creatures::Game<'_>::breed"
+kind = "HEAD"
+helper = "fx_farm_breed.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "parent", ty = "u32", value = "parent" },
+  { name = "partner", ty = "u32", value = "partner" },
+]
+
+# Catalog-less engine functions; the trample one is static and gets no self.
+[[injection]]
+id = "fx_farm_trample"
+target = "horizon_client::game::native_hooks::Game<'_>::native_trample"
+kind = "HEAD"
+helper = "fx_farm_trample.rs"
+bindings = [
+  { name = "entity", ty = "i32", value = "entity" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "cancel", ty = "&mut bool", value = "&mut *cancel" },
+]
+
+[[injection]]
+id = "fx_farm_splash"
+target = "horizon_client::game::potions::Game<'_>::splash"
+kind = "HEAD"
+helper = "fx_farm_splash.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "at", ty = "Vec3", value = "at" },
+]
+
+# Sector: craft
+# Craft sector: Builder, Crafter, Smith and Enchanter.
+[[module]]
+id = "fx_craft_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_craft_rules"
+source = "fx_craft_rules.rs"
+
+[[module]]
+id = "fx_craft"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_craft"
+source = "fx_craft.rs"
+
+[[module]]
+id = "fx_craft_items"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_craft_items"
+source = "fx_craft_items.rs"
+
+[[module]]
+id = "fx_craft_build"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_craft_build"
+source = "fx_craft_build.rs"
+
+[[module]]
+id = "fx_craft_enchant"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_craft_enchant"
+source = "fx_craft_enchant.rs"
+
+[[module]]
+id = "fx_craft_tables"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_craft_tables"
+source = "fx_craft_tables.rs"
+
+[[injection]]
+id = "fx_craft_item_crafted"
+hook = "item_crafted"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_item_crafted.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "recipe", ty = "&str", value = "recipe" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+]
+
+# Names the ingredients of every grid, smithing and stonecutter take, as the acting player.
+[[injection]]
+id = "fx_craft_recipe_crafted"
+target = "horizon_client::game::advancements::Game<'_>::trigger_recipe_crafted"
+kind = "HEAD"
+helper = "fx_craft_recipe_crafted.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "recipe", ty = "&str", value = "recipe" },
+  { name = "ingredients", ty = "&[Option<horizon_client::items::ItemStack>]", value = "ingredients" },
+]
+
+[[injection]]
+id = "fx_craft_prepare_craft"
+hook = "prepare_item_craft"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_prepare_craft.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "result", ty = "&mut Option<horizon_client::items::ItemStack>", value = "&mut *result" },
+]
+
+[[injection]]
+id = "fx_craft_prepare_smithing"
+hook = "prepare_smithing"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_prepare_smithing.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "result", ty = "&mut Option<horizon_client::items::ItemStack>", value = "&mut *result" },
+]
+
+# Not in the hook catalog; the engine asks this on both sides of an anvil.
+[[injection]]
+id = "fx_craft_anvil_update"
+target = "horizon_client::game::native_hooks::Game<'_>::native_anvil_update"
+kind = "HEAD"
+helper = "fx_craft_anvil_update.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "left", ty = "&horizon_client::items::ItemStack", value = "left" },
+  { name = "right", ty = "Option<&horizon_client::items::ItemStack>", value = "right" },
+  { name = "item_name", ty = "Option<&str>", value = "item_name" },
+  { name = "vanilla_output", ty = "Option<&horizon_client::items::ItemStack>", value = "vanilla_output" },
+  { name = "output", ty = "&mut Option<horizon_client::items::ItemStack>", value = "&mut *output" },
+  { name = "xp_cost", ty = "&mut i32", value = "&mut *xp_cost" },
+]
+
+[[injection]]
+id = "fx_craft_anvil_pre"
+hook = "anvil_craft_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_anvil_pre.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "fx_craft_anvil_post"
+hook = "anvil_craft_post"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_anvil_post.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "craft", ty = "&horizon_client::menu::AnvilCraft", value = "craft" },
+]
+
+# Anvil Master: the wear roll never happens, the use sound still plays.
+[[injection]]
+id = "fx_craft_anvil_used"
+target = "horizon_client::game::stations::Game<'_>::anvil_used"
+kind = "HEAD"
+cancellable = true
+helper = "fx_craft_anvil_used.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+# The take's level charge is only readable here, before the engine pays it.
+[[injection]]
+id = "fx_craft_station_combined"
+target = "horizon_client::game::lan_stations::Game<'_>::lan_station_combined"
+kind = "HEAD"
+helper = "fx_craft_station_combined.rs"
+bindings = [
+  { name = "host", ty = "&crate::game::lan::LanHost", value = "&*host" },
+  { name = "conn", ty = "u32", value = "conn" },
+  { name = "gs", ty = "&crate::game::lan_stations::GuestStation", value = "&*gs" },
+]
+
+[[injection]]
+id = "fx_craft_tick_furnace"
+target = "horizon_client::game::block_entity_ticks::Game<'_>::tick_furnace"
+kind = "HEAD"
+helper = "fx_craft_tick_furnace.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "(i32, i32, i32)", value = "pos" },
+]
+
+[[injection]]
+id = "fx_craft_container_open"
+hook = "player_container_open"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_container_open.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "menu", ty = "&str", value = "menu" },
+  { name = "pos", ty = "Option<[i32; 3]>", value = "pos" },
+]
+
+[[injection]]
+id = "fx_craft_furnace_extract"
+hook = "furnace_extract"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_furnace_extract.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "count", ty = "u32", value = "count" },
+]
+
+[[injection]]
+id = "fx_craft_grindstone_taken"
+target = "horizon_client::game::stations::Game<'_>::grindstone_taken"
+kind = "HEAD"
+helper = "fx_craft_grindstone_taken.rs"
+bindings = [
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "fx_craft_enchant_item"
+hook = "enchant_item"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_enchant_item.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&horizon_client::items::ItemStack", value = "item" },
+  { name = "levels", ty = "i32", value = "levels" },
+]
+
+[[injection]]
+id = "fx_craft_prepare_enchant"
+hook = "prepare_item_enchant"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_prepare_enchant.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "costs", ty = "&mut [i32; 3]", value = "&mut *costs" },
+]
+
+# The last look at a guest's station: finishes enchantments and offers dismantling.
+[[injection]]
+id = "fx_craft_send_station"
+target = "horizon_client::game::lan_stations::Game<'_>::lan_send_station"
+kind = "HEAD"
+helper = "fx_craft_send_station.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "host", ty = "&mut crate::game::lan::LanHost", value = "&mut *host" },
+  { name = "conn", ty = "u32", value = "conn" },
+]
+
+[[injection]]
+id = "fx_craft_open_station"
+target = "horizon_client::game::lan_stations::Game<'_>::lan_open_station"
+kind = "HEAD"
+helper = "fx_craft_open_station.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "host", ty = "&mut crate::game::lan::LanHost", value = "&mut *host" },
+  { name = "conn", ty = "u32", value = "conn" },
+  { name = "station", ty = "&crate::game::stations::Station", value = "station" },
+]
+
+# A pocket workbench has no block to stand next to.
+[[injection]]
+id = "fx_craft_table_valid"
+target = "horizon_client::game::lan_crafting::Game<'_>::lan_table_valid"
+kind = "RETURN"
+helper = "fx_craft_table_valid.rs"
+bindings = [
+  { name = "value", ty = "bool", value = "$value" },
+  { name = "g", ty = "&horizon_client::lan::guest::Guest", value = "g" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+]
+
+[[injection]]
+id = "fx_craft_station_valid"
+target = "horizon_client::game::lan_stations::Game<'_>::lan_station_valid"
+kind = "RETURN"
+helper = "fx_craft_station_valid.rs"
+bindings = [
+  { name = "value", ty = "bool", value = "$value" },
+  { name = "g", ty = "&horizon_client::lan::guest::Guest", value = "g" },
+  { name = "gs", ty = "&crate::game::lan_stations::GuestStation", value = "gs" },
+]
+
+# Lives in lan_crafting because the table resend there is private.
+[[injection]]
+id = "fx_craft_tables_tick"
+target = "horizon_client::game::lan_crafting::Game<'_>::lan_tables_tick"
+kind = "HEAD"
+helper = "fx_craft_tables_tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "host", ty = "&mut crate::game::lan::LanHost", value = "&mut *host" },
+]
+
+[[injection]]
+id = "fx_craft_crafting_click"
+target = "horizon_client::game::lan_crafting::Game<'_>::lan_crafting_click"
+kind = "HEAD"
+helper = "fx_craft_crafting_click.rs"
+bindings = [
+  { name = "host", ty = "&crate::game::lan::LanHost", value = "&*host" },
+  { name = "conn", ty = "u32", value = "conn" },
+  { name = "p", ty = "&horizon_protocol::packets::play::ContainerClick", value = "p" },
+]
+
+[[injection]]
+id = "fx_craft_xp_change"
+target = "horizon_client::game::commands::Game<'_>::xp_change"
+kind = "RETURN"
+helper = "fx_craft_xp_change.rs"
+bindings = [
+  { name = "value", ty = "Option<i32>", value = "$value" },
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+]
+
+[[injection]]
+id = "fx_craft_place_block"
+hook = "place_block"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_place_block.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "state", ty = "horizon_world::registry::BlockStateId", value = "state" },
+]
+
+[[injection]]
+id = "fx_craft_right_click"
+hook = "right_click_block"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_right_click.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "face", ty = "[i32; 3]", value = "face" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "fx_craft_break_speed"
+target = "horizon_client::game::native_hooks::Game<'_>::native_break_speed"
+kind = "HEAD"
+helper = "fx_craft_break_speed.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
+  { name = "speed", ty = "&mut f32", value = "&mut *speed" },
+]
+
+[[injection]]
+id = "fx_craft_loot"
+hook = "loot_drops"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_loot.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "context", ty = "&crate::game::native_hooks::NativeLootDrops<'_>", value = "context" },
+  { name = "drops", ty = "&mut Vec<horizon_client::items::ItemStack>", value = "&mut *drops" },
+]
+
+[[injection]]
+id = "fx_craft_frame"
+hook = "frame"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_frame.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "fx_craft_key"
+hook = "key"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_key.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+[[injection]]
+id = "fx_craft_net"
+hook = "net_from_client"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_net.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "channel", ty = "&str", value = "channel" },
+  { name = "data", ty = "&[u8]", value = "data" },
+]
+
+[[injection]]
+id = "fx_craft_vehicle_damage"
+hook = "vehicle_damage"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_vehicle_damage.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "kind", ty = "&str", value = "kind" },
+  { name = "damage", ty = "&mut f32", value = "&mut *damage" },
+]
+
+[[injection]]
+id = "fx_craft_map_filled"
+hook = "player_map_filled"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_craft_map_filled.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "map_id", ty = "i32", value = "map_id" },
+]
+
+# Sector: roam
+# Sector roam: melee, archery, defense and exploration nodes.
+
+[[module]]
+id = "fx_roam_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_roam_rules"
+source = "fx_roam_rules.rs"
+
+[[module]]
+id = "fx_roam"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_roam"
+source = "fx_roam.rs"
+
+[[module]]
+id = "fx_roam_combat"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_roam_combat"
+source = "fx_roam_combat.rs"
+
+[[module]]
+id = "fx_roam_bow"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_roam_bow"
+source = "fx_roam_bow.rs"
+
+[[module]]
+id = "fx_roam_world"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_fx_roam_world"
+source = "fx_roam_world.rs"
+
+# The movement step lives in the client library, below the game crate, so its flag must too.
+[[module]]
+id = "fx_roam_flags"
+file = "crates/horizon-client/src/client_lib.rs"
+name = "pct_fx_roam_flags"
+source = "fx_roam_flags.rs"
+visibility = "pub"
+
+# Melee: the real damage entry for a player's weapon on a mob.
+[[injection]]
+id = "fx_roam_melee_hit"
+target = "horizon_client::game::mace::Game<'_>::hurt_by_player"
+kind = "HEAD"
+cancellable = true
+helper = "fx_roam_melee_hit.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "index", ty = "usize", value = "index" },
+  { name = "amount", ty = "f32", value = "amount" },
+  { name = "source", ty = "horizon_client::mobs::Damage", value = "source" },
+]
+
+# A mob's hit on a player: Thorns and the Shield Wall upgrades.
+[[injection]]
+id = "fx_roam_mob_damage"
+target = "horizon_client::game::creatures::Game<'_>::hurt_player_from"
+kind = "HEAD"
+cancellable = true
+helper = "fx_roam_mob_damage.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "amount", ty = "f32", value = "amount" },
+  { name = "from", ty = "Option<[f64; 3]>", value = "from" },
+  { name = "damage_type", ty = "&str", value = "damage_type" },
+  { name = "known", ty = "Option<Option<u32>>", value = "known" },
+]
+
+[[injection]]
+id = "fx_roam_shield_wear"
+hook = "item_damaged"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_shield_wear.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "item", ty = "&str", value = "item" },
+  { name = "amount", ty = "&mut i32", value = "&mut *amount" },
+]
+
+[[injection]]
+id = "fx_roam_knockback"
+target = "horizon_client::game::creatures::Game<'_>::knock_back_player"
+kind = "HEAD"
+cancellable = true
+helper = "fx_roam_knockback.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "power", ty = "f64", value = "power" },
+  { name = "xd", ty = "f64", value = "xd" },
+  { name = "zd", ty = "f64", value = "zd" },
+  { name = "source", ty = "horizon_client::health::HurtSource<'_>", value = "source" },
+]
+
+[[injection]]
+id = "fx_roam_shield_wide"
+target = "horizon_client::game::shield::Game<'_>::blocks_attacks"
+kind = "RETURN"
+helper = "fx_roam_shield_wide.rs"
+bindings = [
+  { name = "value", ty = "Option<std::borrow::Cow<'_, horizon_client::items::BlocksAttacks>>", value = "$value" },
+]
+
+# Taken just before a strike on another player, so bonus attack charge stays out of PvP.
+[[injection]]
+id = "fx_roam_pvp_strike"
+target = "horizon_client::game::lan_pvp::Game<'_>::pvp_strike"
+kind = "HEAD"
+helper = "fx_roam_pvp_strike.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+# Archery: the shot enters the world here, and is resolved here.
+[[injection]]
+id = "fx_roam_launch"
+target = "horizon_client::game::creatures::Game<'_>::add_projectile"
+kind = "HEAD"
+helper = "fx_roam_launch.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "p", ty = "&mut horizon_client::projectiles::Projectile", value = "&mut p" },
+]
+
+[[injection]]
+id = "fx_roam_projectile_hit"
+target = "horizon_client::game::creatures::Game<'_>::projectile_hit"
+kind = "HEAD"
+cancellable = true
+helper = "fx_roam_projectile_hit.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "p", ty = "&horizon_client::projectiles::Projectile", value = "p" },
+  { name = "hit", ty = "horizon_client::projectiles::Hit", value = "hit" },
+]
+
+[[injection]]
+id = "fx_roam_bow_charge"
+hook = "arrow_loose"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_bow_charge.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "charge", ty = "&mut i32", value = "&mut *charge" },
+]
+
+[[injection]]
+id = "fx_roam_crossbow_start"
+target = "horizon_client::game::crossbow::Game<'_>::tick_crossbow"
+kind = "HEAD"
+helper = "fx_roam_crossbow_start.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+]
+
+[[injection]]
+id = "fx_roam_crossbow_ticks"
+target = "horizon_client::game::crossbow::Game<'_>::charge_ticks"
+kind = "RETURN"
+helper = "fx_roam_crossbow_ticks.rs"
+bindings = [
+  { name = "value", ty = "u32", value = "$value" },
+]
+
+# The client's view and movement while drawing a bow.
+[[injection]]
+id = "fx_roam_fov"
+hook = "compute_fov_modifier"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_fov.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "modifier", ty = "&mut f32", value = "&mut *modifier" },
+]
+
+[[injection]]
+id = "fx_roam_move_input"
+hook = "movement_input"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_move_input.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+]
+
+[[injection]]
+id = "fx_roam_local_tick"
+target = "horizon_client_lib::motion::MotionWorld<'_,'_,'_>::local_tick"
+kind = "HEAD"
+helper = "fx_roam_local_tick.rs"
+bindings = [
+  { name = "world", ty = "&mut MotionWorld<'_, '_, '_>", value = "&mut *self" },
+]
+
+# Exploration.
+[[injection]]
+id = "fx_roam_food"
+hook = "food_level_changed"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_food.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "from", ty = "i32", value = "from" },
+  { name = "to", ty = "i32", value = "*to" },
+  { name = "cancel", ty = "&mut bool", value = "&mut *cancel" },
+]
+
+[[injection]]
+id = "fx_roam_reputation"
+target = "horizon_client::game::villagers::Game<'_>::villager_reputation_of"
+kind = "RETURN"
+helper = "fx_roam_reputation.rs"
+bindings = [
+  { name = "value", ty = "i32", value = "$value" },
+  { name = "uuid", ty = "[i32; 4]", value = "uuid" },
+]
+
+[[injection]]
+id = "fx_roam_boat"
+target = "horizon_client::game::boats::Game<'_>::tick_boat"
+kind = "HEAD"
+helper = "fx_roam_boat.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "b", ty = "&mut Boat", value = "&mut b" },
+  { name = "controlled", ty = "bool", value = "controlled" },
+]
+
+[[injection]]
+id = "fx_roam_key"
+hook = "key"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_key.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+[[injection]]
+id = "fx_roam_net"
+hook = "net_from_client"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_net.rs"
+bindings = [
+  { name = "player", ty = "u128", value = "player" },
+  { name = "channel", ty = "&str", value = "channel" },
+  { name = "data", ty = "&[u8]", value = "data" },
+]
+
+# Kills: who came from a spawner, and the bonus for a long shot.
+[[injection]]
+id = "fx_roam_spawner"
+target = "horizon_client::game::spawner::Game<'_>::add_planned"
+kind = "RETURN"
+helper = "fx_roam_spawner.rs"
+bindings = [
+  { name = "value", ty = "HashMap<u32, u32>", value = "$value" },
+]
+
+[[injection]]
+id = "fx_roam_far_kill"
+hook = "loot_drops"
+hook_version = 1
+kind = "HEAD"
+helper = "fx_roam_far_kill.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "context", ty = "&crate::game::native_hooks::NativeLootDrops<'_>", value = "context" },
+]

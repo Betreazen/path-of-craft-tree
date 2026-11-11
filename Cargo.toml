@@ -1,0 +1,27 @@
+# Fast test harness for the mod's game-free code and the tree generator. The mod itself is the
+# bundle in mixins/path_of_craft_tree and is compiled into the game by horizon-launcher.
+[package]
+name = "path-of-craft-tree-rules"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "lib.rs"
+
+[workspace]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
+
+[[bench]]
+name = "rules"
+harness = false
+
+# Benchmarks keep line tables so a profiler can name the hot functions.
+[profile.bench]
+debug = "line-tables-only"

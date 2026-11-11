@@ -1,0 +1,2742 @@
+[
+ {
+  "id": "start",
+  "kind": "start",
+  "sector": "gather",
+  "name": "Начало",
+  "about": "Центр дерева"
+ },
+ {
+  "id": "branch:alchemy",
+  "kind": "branch",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Алхимик",
+  "about": "Эмблема ветки «Алхимик»"
+ },
+ {
+  "id": "branch:archery",
+  "kind": "branch",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Стрелок",
+  "about": "Эмблема ветки «Стрелок»"
+ },
+ {
+  "id": "branch:building",
+  "kind": "branch",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Строитель",
+  "about": "Эмблема ветки «Строитель»"
+ },
+ {
+  "id": "branch:cooking",
+  "kind": "branch",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Повар",
+  "about": "Эмблема ветки «Повар»"
+ },
+ {
+  "id": "branch:crafting",
+  "kind": "branch",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Крафтер",
+  "about": "Эмблема ветки «Крафтер»"
+ },
+ {
+  "id": "branch:defense",
+  "kind": "branch",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Страж",
+  "about": "Эмблема ветки «Страж»"
+ },
+ {
+  "id": "branch:digging",
+  "kind": "branch",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Копатель",
+  "about": "Эмблема ветки «Копатель»"
+ },
+ {
+  "id": "branch:enchanting",
+  "kind": "branch",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Чародей",
+  "about": "Эмблема ветки «Чародей»"
+ },
+ {
+  "id": "branch:exploration",
+  "kind": "branch",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Исследователь",
+  "about": "Эмблема ветки «Исследователь»"
+ },
+ {
+  "id": "branch:farming",
+  "kind": "branch",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Фермер",
+  "about": "Эмблема ветки «Фермер»"
+ },
+ {
+  "id": "branch:fishing",
+  "kind": "branch",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Рыбак",
+  "about": "Эмблема ветки «Рыбак»"
+ },
+ {
+  "id": "branch:husbandry",
+  "kind": "branch",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Скотовод",
+  "about": "Эмблема ветки «Скотовод»"
+ },
+ {
+  "id": "branch:melee",
+  "kind": "branch",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Воин",
+  "about": "Эмблема ветки «Воин»"
+ },
+ {
+  "id": "branch:mining",
+  "kind": "branch",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Шахтёр",
+  "about": "Эмблема ветки «Шахтёр»"
+ },
+ {
+  "id": "branch:smithing",
+  "kind": "branch",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Кузнец",
+  "about": "Эмблема ветки «Кузнец»"
+ },
+ {
+  "id": "branch:woodcutting",
+  "kind": "branch",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Лесоруб",
+  "about": "Эмблема ветки «Лесоруб»"
+ },
+ {
+  "id": "big:Жила",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Жила",
+  "about": "Руда ломается цепочкой до 8 блоков, прочность тратится за каждый",
+  "upgrades": [
+   "Жила: экономия: Прочность за блок ×0,75",
+   "Жила: длина: Цепочка до 12 блоков",
+   "Жила: экономия II: Прочность за блок ×0,5",
+   "Жила: длина II: Цепочка до 16 блоков",
+   "Жила: экономия III: Прочность за блок ×0,25"
+  ],
+  "old_icon": "minecraft:iron_pickaxe"
+ },
+ {
+  "id": "big:Переплавка",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Переплавка",
+  "about": "Железо, медь и золото падают сразу слитками",
+  "upgrades": [
+   "Переплавка: шанс: Шанс лишнего слитка 5%",
+   "Переплавка: шанс II: Шанс лишнего слитка 10%"
+  ],
+  "old_icon": "minecraft:furnace"
+ },
+ {
+  "id": "big:Прилив сил",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Прилив сил",
+  "about": "После добычи руды 8 секунд ускоренной добычи",
+  "upgrades": [
+   "Прилив: длительность: 12 секунд",
+   "Прилив: сила: Спешка II",
+   "Прилив: бег: Дополнительно скорость передвижения"
+  ],
+  "old_icon": "minecraft:sugar"
+ },
+ {
+  "id": "big:Жадность",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Жадность",
+  "about": "10% шанс лишнего алмаза или изумруда",
+  "upgrades": [
+   "Жадность: 15%: Шанс 15%",
+   "Жадность: 20%: Шанс 20%"
+  ],
+  "old_icon": "minecraft:diamond"
+ },
+ {
+  "id": "big:Забой",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Забой",
+  "about": "Переключаемый режим копания 3×3, прочность ×2",
+  "upgrades": [
+   "Забой: прочность: Прочность ×1,5",
+   "Забой: прочность II: Прочность ×1,2"
+  ],
+  "old_icon": "minecraft:tnt"
+ },
+ {
+  "id": "big:Рудный нюх",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Рудный нюх",
+  "about": "Подсветка руды в радиусе 6 блоков на 10 секунд",
+  "upgrades": [
+   "Нюх: радиус: Радиус 8",
+   "Нюх: радиус II: Радиус 10"
+  ],
+  "old_icon": "minecraft:spyglass"
+ },
+ {
+  "id": "big:Магнитная кирка",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Магнитная кирка",
+  "about": "Добыча сразу попадает в инвентарь",
+  "upgrades": [
+   "Магнит: опыт: Опыт Minecraft тоже зачисляется сразу"
+  ],
+  "old_icon": "minecraft:iron_ingot"
+ },
+ {
+  "id": "big:Твёрдая рука",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Твёрдая рука",
+  "about": "Обсидиан и обломки добываются вдвое быстрее",
+  "upgrades": [
+   "Рука: втрое: Втрое быстрее",
+   "Рука: сланец: Действует и на глубинный сланец"
+  ],
+  "old_icon": "minecraft:obsidian"
+ },
+ {
+  "id": "big:Глаза крота",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Глаза крота",
+  "about": "Ночное зрение ниже уровня Y=0",
+  "upgrades": [
+   "Крот: порог: Порог Y=40",
+   "Крот: вода: Действует под водой"
+  ],
+  "old_icon": "minecraft:ender_eye"
+ },
+ {
+  "id": "big:Закалка шахтёра",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Закалка шахтёра",
+  "about": "Меньше урона от падения и лавы под землёй, 25%",
+  "upgrades": [
+   "Закалка: 40%: Снижение 40%",
+   "Закалка: 50%: Снижение 50%"
+  ],
+  "old_icon": "minecraft:iron_chestplate"
+ },
+ {
+  "id": "big:Экскаватор",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Экскаватор",
+  "about": "Переключаемый режим копания 3×3, прочность ×2",
+  "upgrades": [
+   "Экскаватор: 1: Прочность ×1,5",
+   "Экскаватор: 2: ×1,2",
+   "Экскаватор: 3: режим 5×5"
+  ],
+  "old_icon": "minecraft:iron_shovel"
+ },
+ {
+  "id": "big:Обрушение",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Обрушение",
+  "about": "Столб песка или гравия над блоком ломается целиком, до 8 блоков",
+  "upgrades": [
+   "Обрушение: 1: Меньше расход прочности",
+   "Обрушение: 2: до 16 блоков"
+  ],
+  "old_icon": "minecraft:gravel"
+ },
+ {
+  "id": "big:Кладоискатель",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Кладоискатель",
+  "about": "1% шанс находки в земле. Обычно мелочь: кость, кремень, самородки. Ценное, например изумруд, примерно одна находка из 50",
+  "upgrades": [
+   "Кладоискатель: 1: 2%",
+   "Кладоискатель: 2: 3%",
+   "Кладоискатель: 3: более редкие находки"
+  ],
+  "old_icon": "minecraft:brush"
+ },
+ {
+  "id": "big:Археолог",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Археолог",
+  "about": "Кисточка работает вдвое быстрее",
+  "upgrades": [
+   "Археолог: 1: Шанс лишней находки 10%",
+   "Археолог: 2: 20%"
+  ],
+  "old_icon": "minecraft:sand"
+ },
+ {
+  "id": "big:Кремнёвый глаз",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Кремнёвый глаз",
+  "about": "Гравий всегда даёт кремень",
+  "upgrades": [
+   "Кремнёвый глаз: 1: Шанс двух кремней 25%"
+  ],
+  "old_icon": "minecraft:clay_ball"
+ },
+ {
+  "id": "big:Стекольщик",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Стекольщик",
+  "about": "Песок падает сразу стеклом, режим переключается",
+  "upgrades": [
+   "Стекольщик: 1: Шанс лишнего стекла 10%",
+   "Стекольщик: 2: 20%"
+  ],
+  "old_icon": "minecraft:iron_shovel"
+ },
+ {
+  "id": "big:Засыпка",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Засыпка",
+  "about": "Лопата заполняет яму 3×3 землёй или песком из инвентаря",
+  "upgrades": [
+   "Засыпка: 1: Область 5×5",
+   "Засыпка: 2: шанс не потратить блок"
+  ],
+  "old_icon": "minecraft:gravel"
+ },
+ {
+  "id": "big:Ландшафтник",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Ландшафтник",
+  "about": "Лопата делает тропинку сразу 3×3",
+  "upgrades": [
+   "Ландшафтник: 1: 5×5",
+   "Ландшафтник: 2: выравнивание неровностей"
+  ],
+  "old_icon": "minecraft:brush"
+ },
+ {
+  "id": "big:Лёгкая поступь",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Лёгкая поступь",
+  "about": "Нет замедления на песке душ, иле и снегу",
+  "upgrades": [
+   "Лёгкая поступь: 1: Рыхлый снег не затягивает"
+  ],
+  "old_icon": "minecraft:sand"
+ },
+ {
+  "id": "big:Боевая лопата",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Боевая лопата",
+  "about": "Лопата бьёт как меч того же материала",
+  "upgrades": [
+   "Боевая лопата: 1: Шанс оглушить или отбросить врага"
+  ],
+  "old_icon": "minecraft:clay_ball"
+ },
+ {
+  "id": "big:Лесоповал",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Лесоповал",
+  "about": "Дерево падает целиком, до 32 брёвен, прочность тратится за каждое",
+  "upgrades": [
+   "Лесоповал: 1: Прочность ×0,75, ×0,5, ×0,25",
+   "Лесоповал: 2: до 64 брёвен",
+   "Лесоповал: 3: последний усилитель снимает ограничение: любое дерево целиком"
+  ],
+  "old_icon": "minecraft:iron_axe"
+ },
+ {
+  "id": "big:Лесничий",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Лесничий",
+  "about": "На месте срубленного дерева сам сажается саженец",
+  "upgrades": [
+   "Лесничий: 1: Шанс, что он сразу подрастёт",
+   "Лесничий: 2: посадка 2×2 для больших деревьев"
+  ],
+  "old_icon": "minecraft:oak_sapling"
+ },
+ {
+  "id": "big:Щедрая крона",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Щедрая крона",
+  "about": "При вырубке листва осыпается сразу",
+  "upgrades": [
+   "Щедрая крона: 1: Чаще яблоки и палки",
+   "Щедрая крона: 2: шанс золотого яблока"
+  ],
+  "old_icon": "minecraft:oak_leaves"
+ },
+ {
+  "id": "big:Штабель",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Штабель",
+  "about": "Добыча с Лесоповала собирается в одном месте у игрока",
+  "upgrades": [
+   "Штабель: 1: Сразу в инвентарь"
+  ],
+  "old_icon": "minecraft:oak_planks"
+ },
+ {
+  "id": "big:Чистильщик",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Чистильщик",
+  "about": "Один клик снимает кору со всего ствола",
+  "upgrades": [
+   "Чистильщик: 1: Шанс лишней коры или опыта"
+  ],
+  "old_icon": "minecraft:charcoal"
+ },
+ {
+  "id": "big:Плотник",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Плотник",
+  "about": "Брёвна падают сразу досками, режим переключается",
+  "upgrades": [
+   "Плотник: 1: 5 досок вместо 4",
+   "Плотник: 2: шанс палок"
+  ],
+  "old_icon": "minecraft:iron_axe"
+ },
+ {
+  "id": "big:Углежог",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Углежог",
+  "about": "10% шанс, что бревно упадёт древесным углём",
+  "upgrades": [
+   "Углежог: 1: 20%",
+   "Углежог: 2: 30%"
+  ],
+  "old_icon": "minecraft:oak_sapling"
+ },
+ {
+  "id": "big:Живица",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Живица",
+  "about": "Каждые 8 брёвен топор чинится на единицу прочности",
+  "upgrades": [
+   "Живица: 1: Каждые 5",
+   "Живица: 2: каждые 3"
+  ],
+  "old_icon": "minecraft:oak_leaves"
+ },
+ {
+  "id": "big:Лесной страж",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Лесной страж",
+  "about": "В лесных биомах: скорость передвижения и медленная регенерация",
+  "upgrades": [
+   "Лесной страж: 1: Сильнее",
+   "Лесной страж: 2: действует и на незерские леса"
+  ],
+  "old_icon": "minecraft:oak_planks"
+ },
+ {
+  "id": "big:Дары леса",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Дары леса",
+  "about": "Редкая находка в вырубке: мёд, гнездо, яблоко",
+  "upgrades": [
+   "Дары леса: 1: Чаще",
+   "Дары леса: 2: более ценные находки"
+  ],
+  "old_icon": "minecraft:charcoal"
+ },
+ {
+  "id": "big:Морской клад",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Морской клад",
+  "about": "Чаще сокровища",
+  "upgrades": [
+   "Морской клад: 1: Сильнее",
+   "Морской клад: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:fishing_rod"
+ },
+ {
+  "id": "big:Быстрый клёв",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Быстрый клёв",
+  "about": "Рыба клюёт быстрее",
+  "upgrades": [
+   "Быстрый клёв: 1: Сильнее",
+   "Быстрый клёв: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:cod"
+ },
+ {
+  "id": "big:Двойной улов",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Двойной улов",
+  "about": "15% шанс второй добычи",
+  "upgrades": [
+   "Двойной улов: 1: 25%",
+   "Двойной улов: 2: 35%"
+  ],
+  "old_icon": "minecraft:nautilus_shell"
+ },
+ {
+  "id": "big:Чистая вода",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Чистая вода",
+  "about": "Меньше мусора",
+  "upgrades": [
+   "Чистая вода: 1: Мусора нет совсем"
+  ],
+  "old_icon": "minecraft:prismarine_shard"
+ },
+ {
+  "id": "big:Дар глубин",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Дар глубин",
+  "about": "Редкий улов: книги, слитки",
+  "upgrades": [
+   "Дар глубин: 1: Ценнее",
+   "Дар глубин: 2: Ценнее ещё"
+  ],
+  "old_icon": "minecraft:heart_of_the_sea"
+ },
+ {
+  "id": "big:Морская поступь",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Морская поступь",
+  "about": "Быстрое плавание",
+  "upgrades": [
+   "Морская поступь: 1: Дольше под водой"
+  ],
+  "old_icon": "minecraft:fishing_rod"
+ },
+ {
+  "id": "big:Сырое не страшно",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Сырое не страшно",
+  "about": "Сырая рыба насыщает как жареная",
+  "upgrades": [
+   "Сырое не страшно: 1: Даёт короткий бонус"
+  ],
+  "old_icon": "minecraft:cod"
+ },
+ {
+  "id": "big:Гарпун",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Гарпун",
+  "about": "Удочка сильнее тянет мобов",
+  "upgrades": [
+   "Гарпун: 1: Наносит урон"
+  ],
+  "old_icon": "minecraft:nautilus_shell"
+ },
+ {
+  "id": "big:Лавовая рыбалка",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Лавовая рыбалка",
+  "about": "Можно ловить в лаве",
+  "upgrades": [
+   "Лавовая рыбалка: 1: Незерская добыча"
+  ],
+  "old_icon": "minecraft:prismarine_shard"
+ },
+ {
+  "id": "big:Рыбацкое счастье",
+  "kind": "big",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Рыбацкое счастье",
+  "about": "Шанс не потратить приманку и прочность",
+  "upgrades": [
+   "Рыбацкое счастье: 1: Сильнее",
+   "Рыбацкое счастье: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:heart_of_the_sea"
+ },
+ {
+  "id": "big:Жнец",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Жнец",
+  "about": "Клик по созревшему: сбор и новая посадка",
+  "upgrades": [
+   "Жнец: 1: Область 3×3",
+   "Жнец: 2: 5×5"
+  ],
+  "old_icon": "minecraft:iron_hoe"
+ },
+ {
+  "id": "big:Широкая мотыга",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Широкая мотыга",
+  "about": "Вспашка 3×3",
+  "upgrades": [
+   "Широкая мотыга: 1: 5×5",
+   "Широкая мотыга: 2: 5×5 ещё"
+  ],
+  "old_icon": "minecraft:wheat"
+ },
+ {
+  "id": "big:Зелёные пальцы",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Зелёные пальцы",
+  "about": "Рост рядом с игроком быстрее",
+  "upgrades": [
+   "Зелёные пальцы: 1: Больше радиус"
+  ],
+  "old_icon": "minecraft:carrot"
+ },
+ {
+  "id": "big:Вечная пашня",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Вечная пашня",
+  "about": "Пашня не вытаптывается",
+  "upgrades": [
+   "Вечная пашня: 1: Всегда влажная"
+  ],
+  "old_icon": "minecraft:melon_slice"
+ },
+ {
+  "id": "big:Семенной фонд",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Семенной фонд",
+  "about": "Посадка с шансом не тратит семена",
+  "upgrades": [
+   "Семенной фонд: 1: Чаще",
+   "Семенной фонд: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:sugar_cane"
+ },
+ {
+  "id": "big:Весь стебель",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Весь стебель",
+  "about": "Тростник и бамбук срезаются целиком",
+  "upgrades": [
+   "Весь стебель: 1: Сразу в инвентарь"
+  ],
+  "old_icon": "minecraft:iron_hoe"
+ },
+ {
+  "id": "big:Золотой урожай",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Золотой урожай",
+  "about": "Шанс золотой моркови или сверкающего арбуза",
+  "upgrades": [
+   "Золотой урожай: 1: Чаще",
+   "Золотой урожай: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:wheat"
+ },
+ {
+  "id": "big:Дикие травы",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Дикие травы",
+  "about": "Цветы и травы дают вдвое больше",
+  "upgrades": [
+   "Дикие травы: 1: Шанс семян"
+  ],
+  "old_icon": "minecraft:carrot"
+ },
+ {
+  "id": "big:Пугало",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Пугало",
+  "about": "Рядом с посевами не ходят мобы",
+  "upgrades": [
+   "Пугало: 1: Больше радиус"
+  ],
+  "old_icon": "minecraft:melon_slice"
+ },
+ {
+  "id": "big:Сытная земля",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Сытная земля",
+  "about": "Съеденный свой урожай насыщает больше",
+  "upgrades": [
+   "Сытная земля: 1: Сильнее",
+   "Сытная земля: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:sugar_cane"
+ },
+ {
+  "id": "big:Заводчик",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Заводчик",
+  "about": "Шанс двойни",
+  "upgrades": [
+   "Заводчик: 1: Чаще",
+   "Заводчик: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:wheat"
+ },
+ {
+  "id": "big:Быстрое взросление",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Быстрое взросление",
+  "about": "Детёныши растут быстрее",
+  "upgrades": [
+   "Быстрое взросление: 1: Сильнее",
+   "Быстрое взросление: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:lead"
+ },
+ {
+  "id": "big:Любовь без пауз",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Любовь без пауз",
+  "about": "Короче перезарядка разведения",
+  "upgrades": [
+   "Любовь без пауз: 1: Сильнее",
+   "Любовь без пауз: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:shears"
+ },
+ {
+  "id": "big:Приручитель",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Приручитель",
+  "about": "Приручение с первой попытки чаще",
+  "upgrades": [
+   "Приручитель: 1: Всегда",
+   "Приручитель: 2: Всегда ещё"
+  ],
+  "old_icon": "minecraft:bone"
+ },
+ {
+  "id": "big:Стригаль",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Стригаль",
+  "about": "Больше шерсти",
+  "upgrades": [
+   "Стригаль: 1: Сильнее",
+   "Стригаль: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:honey_bottle"
+ },
+ {
+  "id": "big:Вожак",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Вожак",
+  "about": "Животные идут за игроком без еды",
+  "upgrades": [
+   "Вожак: 1: Дальше",
+   "Вожак: 2: Дальше ещё"
+  ],
+  "old_icon": "minecraft:wheat"
+ },
+ {
+  "id": "big:Верный пёс",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Верный пёс",
+  "about": "Волки сильнее",
+  "upgrades": [
+   "Верный пёс: 1: Живучее",
+   "Верный пёс: 2: Живучее ещё"
+  ],
+  "old_icon": "minecraft:lead"
+ },
+ {
+  "id": "big:Конюх",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Конюх",
+  "about": "Лошади быстрее и прыгают выше",
+  "upgrades": [
+   "Конюх: 1: Сильнее",
+   "Конюх: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:shears"
+ },
+ {
+  "id": "big:Мясник",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Мясник",
+  "about": "Больше мяса с животных",
+  "upgrades": [
+   "Мясник: 1: Шанс кожи и костей"
+  ],
+  "old_icon": "minecraft:bone"
+ },
+ {
+  "id": "big:Пчеловод",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Пчеловод",
+  "about": "Пчёлы не атакуют, больше мёда",
+  "upgrades": [
+   "Пчеловод: 1: Сильнее",
+   "Пчеловод: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:honey_bottle"
+ },
+ {
+  "id": "big:Гурман",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Гурман",
+  "about": "Еда даёт короткий положительный эффект",
+  "upgrades": [
+   "Гурман: 1: Сильнее",
+   "Гурман: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:cooked_beef"
+ },
+ {
+  "id": "big:Шеф",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Шеф",
+  "about": "Шанс двойной порции",
+  "upgrades": [
+   "Шеф: 1: Чаще",
+   "Шеф: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:bread"
+ },
+ {
+  "id": "big:Быстрая плита",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Быстрая плита",
+  "about": "Печи игрока работают быстрее",
+  "upgrades": [
+   "Быстрая плита: 1: Сильнее",
+   "Быстрая плита: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:cake"
+ },
+ {
+  "id": "big:Сытость",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Сытость",
+  "about": "Еда насыщает дольше",
+  "upgrades": [
+   "Сытость: 1: Сильнее",
+   "Сытость: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:rabbit_stew"
+ },
+ {
+  "id": "big:Едок на бегу",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Едок на бегу",
+  "about": "Едите быстрее",
+  "upgrades": [
+   "Едок на бегу: 1: Можно бежать во время еды"
+  ],
+  "old_icon": "minecraft:smoker"
+ },
+ {
+  "id": "big:Экономный едок",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Экономный едок",
+  "about": "Шанс не потратить еду",
+  "upgrades": [
+   "Экономный едок: 1: Чаще",
+   "Экономный едок: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:cooked_beef"
+ },
+ {
+  "id": "big:Походная кухня",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Походная кухня",
+  "about": "Супы складываются в стопку",
+  "upgrades": [
+   "Походная кухня: 1: Больше в стопке"
+  ],
+  "old_icon": "minecraft:bread"
+ },
+ {
+  "id": "big:Дегустатор",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Дегустатор",
+  "about": "Сырое и пропавшее не вредит",
+  "upgrades": [
+   "Дегустатор: 1: Даже яд слабее"
+  ],
+  "old_icon": "minecraft:cake"
+ },
+ {
+  "id": "big:Угощение",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Угощение",
+  "about": "Торт лечит и усиливает всех рядом",
+  "upgrades": [
+   "Угощение: 1: Сильнее",
+   "Угощение: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:rabbit_stew"
+ },
+ {
+  "id": "big:Секретный рецепт",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Секретный рецепт",
+  "about": "Новые блюда с особыми эффектами",
+  "upgrades": [
+   "Секретный рецепт: 1: Больше блюд"
+  ],
+  "old_icon": "minecraft:smoker"
+ },
+ {
+  "id": "big:Перегонка",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Перегонка",
+  "about": "Шанс не потратить ингредиент",
+  "upgrades": [
+   "Перегонка: 1: Чаще",
+   "Перегонка: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:brewing_stand"
+ },
+ {
+  "id": "big:Продление",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Продление",
+  "about": "Зелья действуют дольше",
+  "upgrades": [
+   "Продление: 1: Сильнее",
+   "Продление: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:potion"
+ },
+ {
+  "id": "big:Концентрат",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Концентрат",
+  "about": "Шанс зелья на уровень выше",
+  "upgrades": [
+   "Концентрат: 1: Чаще",
+   "Концентрат: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:nether_wart"
+ },
+ {
+  "id": "big:Быстрая варка",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Быстрая варка",
+  "about": "Стойка работает быстрее",
+  "upgrades": [
+   "Быстрая варка: 1: Сильнее",
+   "Быстрая варка: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:blaze_powder"
+ },
+ {
+  "id": "big:Щедрая стойка",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Щедрая стойка",
+  "about": "Шанс лишней бутылки",
+  "upgrades": [
+   "Щедрая стойка: 1: Чаще",
+   "Щедрая стойка: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:glass_bottle"
+ },
+ {
+  "id": "big:Привычка к яду",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Привычка к яду",
+  "about": "Яд и голод слабее",
+  "upgrades": [
+   "Привычка к яду: 1: Иммунитет к яду"
+  ],
+  "old_icon": "minecraft:brewing_stand"
+ },
+ {
+  "id": "big:Широкий разлив",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Широкий разлив",
+  "about": "Взрывные зелья бьют шире",
+  "upgrades": [
+   "Широкий разлив: 1: Больше радиус"
+  ],
+  "old_icon": "minecraft:potion"
+ },
+ {
+  "id": "big:Последний глоток",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Последний глоток",
+  "about": "Шанс не потратить выпитое зелье",
+  "upgrades": [
+   "Последний глоток: 1: Чаще",
+   "Последний глоток: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:nether_wart"
+ },
+ {
+  "id": "big:Опыт во флаконе",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Опыт во флаконе",
+  "about": "Шанс бутылька опыта при варке",
+  "upgrades": [
+   "Опыт во флаконе: 1: Чаще",
+   "Опыт во флаконе: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:blaze_powder"
+ },
+ {
+  "id": "big:Смешение",
+  "kind": "big",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Смешение",
+  "about": "Два эффекта в одной бутылке",
+  "upgrades": [
+   "Смешение: 1: Три эффекта"
+  ],
+  "old_icon": "minecraft:glass_bottle"
+ },
+ {
+  "id": "big:Экономный",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Экономный",
+  "about": "Шанс не потратить блок",
+  "upgrades": [
+   "Экономный: 1: Чаще",
+   "Экономный: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:bricks"
+ },
+ {
+  "id": "big:Длинные руки",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Длинные руки",
+  "about": "Дальность установки больше",
+  "upgrades": [
+   "Длинные руки: 1: Сильнее",
+   "Длинные руки: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:scaffolding"
+ },
+ {
+  "id": "big:Ровная линия",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Ровная линия",
+  "about": "Ряд блоков одним действием",
+  "upgrades": [
+   "Ровная линия: 1: Длиннее",
+   "Ровная линия: 2: Длиннее ещё"
+  ],
+  "old_icon": "minecraft:stone_stairs"
+ },
+ {
+  "id": "big:Заливка",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Заливка",
+  "about": "Заполнить плоскость между двумя точками",
+  "upgrades": [
+   "Заливка: 1: Больше площадь"
+  ],
+  "old_icon": "minecraft:oak_planks"
+ },
+ {
+  "id": "big:Замена",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Замена",
+  "about": "Заменить блок, не ломая его",
+  "upgrades": [
+   "Замена: 1: Сразу область"
+  ],
+  "old_icon": "minecraft:glass"
+ },
+ {
+  "id": "big:Быстрый разбор",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Быстрый разбор",
+  "about": "Свои блоки ломаются почти мгновенно",
+  "upgrades": [
+   "Быстрый разбор: 1: Сразу в инвентарь"
+  ],
+  "old_icon": "minecraft:bricks"
+ },
+ {
+  "id": "big:Леса",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Леса",
+  "about": "Подмостья ставятся и снимаются быстрее",
+  "upgrades": [
+   "Леса: 1: Без расхода"
+  ],
+  "old_icon": "minecraft:scaffolding"
+ },
+ {
+  "id": "big:Без страха высоты",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Без страха высоты",
+  "about": "Медленное падение во время стройки",
+  "upgrades": [
+   "Без страха высоты: 1: Без урона от падения"
+  ],
+  "old_icon": "minecraft:stone_stairs"
+ },
+ {
+  "id": "big:Палитра",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Палитра",
+  "about": "Перекрашивание блоков без ломания",
+  "upgrades": [
+   "Палитра: 1: Сразу область"
+  ],
+  "old_icon": "minecraft:oak_planks"
+ },
+ {
+  "id": "big:Чертёж",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Чертёж",
+  "about": "Сохранить и повторить небольшую постройку",
+  "upgrades": [
+   "Чертёж: 1: Больше размер"
+  ],
+  "old_icon": "minecraft:glass"
+ },
+ {
+  "id": "big:Мастерская",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Мастерская",
+  "about": "Шанс двойного результата",
+  "upgrades": [
+   "Мастерская: 1: Чаще",
+   "Мастерская: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:crafting_table"
+ },
+ {
+  "id": "big:Запасливый",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Запасливый",
+  "about": "Шанс вернуть ингредиент",
+  "upgrades": [
+   "Запасливый: 1: Чаще",
+   "Запасливый: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:redstone"
+ },
+ {
+  "id": "big:Карманный верстак",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Карманный верстак",
+  "about": "Верстак открывается с клавиши. Проверить плейтестом, не слишком ли сильно",
+  "upgrades": [
+   "Карманный верстак: 1: Также камнерез и ткацкий"
+  ],
+  "old_icon": "minecraft:rail"
+ },
+ {
+  "id": "big:Инженер",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Инженер",
+  "about": "Редстоун-механизмы дешевле",
+  "upgrades": [
+   "Инженер: 1: Сильнее",
+   "Инженер: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:loom"
+ },
+ {
+  "id": "big:Рельсовый мастер",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Рельсовый мастер",
+  "about": "Больше рельсов за крафт",
+  "upgrades": [
+   "Рельсовый мастер: 1: Вагонетки прочнее"
+  ],
+  "old_icon": "minecraft:cartography_table"
+ },
+ {
+  "id": "big:Каменотёс",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Каменотёс",
+  "about": "Больше блоков с камнереза",
+  "upgrades": [
+   "Каменотёс: 1: Сильнее",
+   "Каменотёс: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:crafting_table"
+ },
+ {
+  "id": "big:Ткач",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Ткач",
+  "about": "Шерсть и ковры выгоднее",
+  "upgrades": [
+   "Ткач: 1: Сильнее",
+   "Ткач: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:redstone"
+ },
+ {
+  "id": "big:Картограф",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Картограф",
+  "about": "Карты шире",
+  "upgrades": [
+   "Картограф: 1: Дешевле",
+   "Картограф: 2: Дешевле ещё",
+   "Картограф: 1: Больше биомов"
+  ],
+  "old_icon": "minecraft:rail"
+ },
+ {
+  "id": "big:Массовый крафт",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Массовый крафт",
+  "about": "Сразу несколько стаков одной кнопкой",
+  "upgrades": [
+   "Массовый крафт: 1: Больше",
+   "Массовый крафт: 2: Больше ещё"
+  ],
+  "old_icon": "minecraft:loom"
+ },
+ {
+  "id": "big:Подручные средства",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Подручные средства",
+  "about": "Крафт берёт ингредиенты из ближних сундуков",
+  "upgrades": [
+   "Подручные средства: 1: Больше радиус"
+  ],
+  "old_icon": "minecraft:cartography_table"
+ },
+ {
+  "id": "big:Закалка",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Закалка",
+  "about": "Починка дешевле",
+  "upgrades": [
+   "Закалка: 1: Сильнее",
+   "Закалка: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "big:Мастер наковальни",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Мастер наковальни",
+  "about": "Наковальня не портится",
+  "upgrades": [
+   "Мастер наковальни: 1: Снят предел цены"
+  ],
+  "old_icon": "minecraft:iron_ingot"
+ },
+ {
+  "id": "big:Экономная плавка",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Экономная плавка",
+  "about": "Топливо горит дольше",
+  "upgrades": [
+   "Экономная плавка: 1: Сильнее",
+   "Экономная плавка: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:blast_furnace"
+ },
+ {
+  "id": "big:Двойной слиток",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Двойной слиток",
+  "about": "Шанс лишнего слитка из печи",
+  "upgrades": [
+   "Двойной слиток: 1: Чаще",
+   "Двойной слиток: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:smithing_table"
+ },
+ {
+  "id": "big:Прочная ковка",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Прочная ковка",
+  "about": "Свои предметы получают больше прочности",
+  "upgrades": [
+   "Прочная ковка: 1: Сильнее",
+   "Прочная ковка: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:netherite_ingot"
+ },
+ {
+  "id": "big:Точильщик",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Точильщик",
+  "about": "Быстрая починка на ходу за материал",
+  "upgrades": [
+   "Точильщик: 1: Дешевле",
+   "Точильщик: 2: Дешевле ещё"
+  ],
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "big:Кольчужник",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Кольчужник",
+  "about": "Своя броня защищает лучше",
+  "upgrades": [
+   "Кольчужник: 1: Сильнее",
+   "Кольчужник: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:iron_ingot"
+ },
+ {
+  "id": "big:Плавильщик",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Плавильщик",
+  "about": "Печи игрока быстрее",
+  "upgrades": [
+   "Плавильщик: 1: Сильнее",
+   "Плавильщик: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:blast_furnace"
+ },
+ {
+  "id": "big:Разборка",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Разборка",
+  "about": "Предмет разбирается на часть материалов",
+  "upgrades": [
+   "Разборка: 1: Больше возврат"
+  ],
+  "old_icon": "minecraft:smithing_table"
+ },
+ {
+  "id": "big:Драгоценный сплав",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Драгоценный сплав",
+  "about": "Шанс лишнего незерита при улучшении",
+  "upgrades": [
+   "Драгоценный сплав: 1: Чаще",
+   "Драгоценный сплав: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:netherite_ingot"
+ },
+ {
+  "id": "big:Резонанс",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Резонанс",
+  "about": "Шанс дополнительного зачарования",
+  "upgrades": [
+   "Резонанс: 1: Чаще",
+   "Резонанс: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:enchanting_table"
+ },
+ {
+  "id": "big:Экономия лазурита",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Экономия лазурита",
+  "about": "Меньше лазурита",
+  "upgrades": [
+   "Экономия лазурита: 1: Без расхода"
+  ],
+  "old_icon": "minecraft:book"
+ },
+ {
+  "id": "big:Обновление стола",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Обновление стола",
+  "about": "Новые варианты бесплатно",
+  "upgrades": [
+   "Обновление стола: 1: Без перезарядки"
+  ],
+  "old_icon": "minecraft:lapis_lazuli"
+ },
+ {
+  "id": "big:Знаток",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Знаток",
+  "about": "Все зачарования видны заранее",
+  "upgrades": [
+   "Знаток: 1: Показ шансов"
+  ],
+  "old_icon": "minecraft:experience_bottle"
+ },
+ {
+  "id": "big:Книжник",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Книжник",
+  "about": "Нужно меньше книжных полок",
+  "upgrades": [
+   "Книжник: 1: Больше уровень стола"
+  ],
+  "old_icon": "minecraft:enchanted_book"
+ },
+ {
+  "id": "big:Перенос",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Перенос",
+  "about": "Зачарование переносится на другой предмет",
+  "upgrades": [
+   "Перенос: 1: Без потерь"
+  ],
+  "old_icon": "minecraft:enchanting_table"
+ },
+ {
+  "id": "big:Точная точилка",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Точная точилка",
+  "about": "Точило возвращает зачарование книгой",
+  "upgrades": [
+   "Точная точилка: 1: Чаще",
+   "Точная точилка: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:book"
+ },
+ {
+  "id": "big:Поток опыта",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Поток опыта",
+  "about": "Больше опыта Minecraft",
+  "upgrades": [
+   "Поток опыта: 1: Сильнее",
+   "Поток опыта: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:lapis_lazuli"
+ },
+ {
+  "id": "big:Сверх предела",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Сверх предела",
+  "about": "Шанс уровня зачарования выше максимума",
+  "upgrades": [
+   "Сверх предела: 1: Чаще",
+   "Сверх предела: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:experience_bottle"
+ },
+ {
+  "id": "big:Запретная связь",
+  "kind": "big",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Запретная связь",
+  "about": "Несовместимые зачарования совмещаются",
+  "upgrades": [
+   "Запретная связь: 1: Больше пар"
+  ],
+  "old_icon": "minecraft:enchanted_book"
+ },
+ {
+  "id": "big:Кровопийца",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Кровопийца",
+  "about": "Лечение при убийстве",
+  "upgrades": [
+   "Кровопийца: 1: Сильнее",
+   "Кровопийца: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:iron_sword"
+ },
+ {
+  "id": "big:Шипы",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Шипы",
+  "about": "Часть полученного урона отражается обратно противнику",
+  "upgrades": [
+   "Шипы: 1: Больше доля отражения"
+  ],
+  "old_icon": "minecraft:creeper_head"
+ },
+ {
+  "id": "big:Добивание",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Добивание",
+  "about": "Больше урона по раненым",
+  "upgrades": [
+   "Добивание: 1: Сильнее",
+   "Добивание: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:iron_axe"
+ },
+ {
+  "id": "big:Берсерк",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Берсерк",
+  "about": "Больше урона при низком здоровье",
+  "upgrades": [
+   "Берсерк: 1: Сильнее",
+   "Берсерк: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:redstone"
+ },
+ {
+  "id": "big:Контратака",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Контратака",
+  "about": "Удар после блока щитом сильнее",
+  "upgrades": [
+   "Контратака: 1: Сильнее",
+   "Контратака: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:gunpowder"
+ },
+ {
+  "id": "big:Оглушение",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Оглушение",
+  "about": "Шанс оглушить врага",
+  "upgrades": [
+   "Оглушение: 1: Чаще",
+   "Оглушение: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:iron_sword"
+ },
+ {
+  "id": "big:Кровотечение",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Кровотечение",
+  "about": "Удар наносит урон со временем",
+  "upgrades": [
+   "Кровотечение: 1: Сильнее",
+   "Кровотечение: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:creeper_head"
+ },
+ {
+  "id": "big:Замедление детонации",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Замедление детонации",
+  "about": "Больше задержка до взрыва у крипера, нацеленного на игрока",
+  "upgrades": [
+   "Замедление детонации: 1: Задержка больше на каждом усилителе",
+   "Замедление детонации: 2: последний отменяет взрыв крипера"
+  ],
+  "old_icon": "minecraft:iron_axe"
+ },
+ {
+  "id": "big:Охотник за головами",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Охотник за головами",
+  "about": "Шанс головы моба",
+  "upgrades": [
+   "Охотник за головами: 1: Чаще",
+   "Охотник за головами: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:redstone"
+ },
+ {
+  "id": "big:Боевой клич",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Боевой клич",
+  "about": "Усиление союзников рядом",
+  "upgrades": [
+   "Боевой клич: 1: Шире",
+   "Боевой клич: 2: Шире ещё"
+  ],
+  "old_icon": "minecraft:gunpowder"
+ },
+ {
+  "id": "big:Меткий глаз",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Меткий глаз",
+  "about": "Шанс не потратить стрелу",
+  "upgrades": [
+   "Меткий глаз: 1: Чаще",
+   "Меткий глаз: 2: Чаще ещё"
+  ],
+  "old_icon": "minecraft:bow"
+ },
+ {
+  "id": "big:Скорострел",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Скорострел",
+  "about": "Лук натягивается быстрее",
+  "upgrades": [
+   "Скорострел: 1: Сильнее",
+   "Скорострел: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:crossbow"
+ },
+ {
+  "id": "big:Дальнобой",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Дальнобой",
+  "about": "Выше скорость снаряда",
+  "upgrades": [
+   "Дальнобой: 1: Сильнее",
+   "Дальнобой: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:arrow"
+ },
+ {
+  "id": "big:Тройной выстрел",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Тройной выстрел",
+  "about": "Сразу три стрелы",
+  "upgrades": [
+   "Тройной выстрел: 1: Пять",
+   "Тройной выстрел: 2: Пять ещё"
+  ],
+  "old_icon": "minecraft:spectral_arrow"
+ },
+ {
+  "id": "big:Возврат стрел",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Возврат стрел",
+  "about": "Стрелы чаще можно подобрать",
+  "upgrades": [
+   "Возврат стрел: 1: Всегда",
+   "Возврат стрел: 2: Всегда ещё"
+  ],
+  "old_icon": "minecraft:target"
+ },
+ {
+  "id": "big:Пробивная стрела",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Пробивная стрела",
+  "about": "Стрела проходит сквозь цель",
+  "upgrades": [
+   "Пробивная стрела: 1: Больше целей"
+  ],
+  "old_icon": "minecraft:bow"
+ },
+ {
+  "id": "big:Орлиный глаз",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Орлиный глаз",
+  "about": "Приближение при натяжении",
+  "upgrades": [
+   "Орлиный глаз: 1: Сильнее",
+   "Орлиный глаз: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:crossbow"
+ },
+ {
+  "id": "big:Охотничий след",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Охотничий след",
+  "about": "Подсветка раненых целей",
+  "upgrades": [
+   "Охотничий след: 1: Дольше",
+   "Охотничий след: 2: Дольше ещё"
+  ],
+  "old_icon": "minecraft:arrow"
+ },
+ {
+  "id": "big:Быстрый арбалет",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Быстрый арбалет",
+  "about": "Арбалет заряжается быстрее",
+  "upgrades": [
+   "Быстрый арбалет: 1: Сильнее",
+   "Быстрый арбалет: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:spectral_arrow"
+ },
+ {
+  "id": "big:Стрельба на ходу",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Стрельба на ходу",
+  "about": "Нет замедления при натяжении",
+  "upgrades": [
+   "Стрельба на ходу: 1: И при зарядке арбалета"
+  ],
+  "old_icon": "minecraft:target"
+ },
+ {
+  "id": "big:Несгибаемый",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Несгибаемый",
+  "about": "Меньше отбрасывания",
+  "upgrades": [
+   "Несгибаемый: 1: Нет отбрасывания"
+  ],
+  "old_icon": "minecraft:shield"
+ },
+ {
+  "id": "big:Щит-стена",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Щит-стена",
+  "about": "Щит поднимается мгновенно",
+  "upgrades": [
+   "Щит-стена: 1: Шире сектор"
+  ],
+  "old_icon": "minecraft:iron_chestplate"
+ },
+ {
+  "id": "big:Удар щитом",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Удар щитом",
+  "about": "Отражённый удар отбрасывает врага",
+  "upgrades": [
+   "Удар щитом: 1: Наносит урон"
+  ],
+  "old_icon": "minecraft:totem_of_undying"
+ },
+ {
+  "id": "big:Каменная кожа",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Каменная кожа",
+  "about": "Больше брони при низком здоровье",
+  "upgrades": [
+   "Каменная кожа: 1: Сильнее",
+   "Каменная кожа: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:netherite_chestplate"
+ },
+ {
+  "id": "big:Второе дыхание",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Второе дыхание",
+  "about": "Спасение от смерти раз в 10 минут",
+  "upgrades": [
+   "Второе дыхание: 1: Короче перезарядка"
+  ],
+  "old_icon": "minecraft:golden_apple"
+ },
+ {
+  "id": "big:Огнестойкий",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Огнестойкий",
+  "about": "Меньше урона от огня",
+  "upgrades": [
+   "Огнестойкий: 1: Иммунитет",
+   "Огнестойкий: 2: Иммунитет ещё"
+  ],
+  "old_icon": "minecraft:shield"
+ },
+ {
+  "id": "big:Опора",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Опора",
+  "about": "Защита союзников рядом",
+  "upgrades": [
+   "Опора: 1: Шире",
+   "Опора: 2: Шире ещё"
+  ],
+  "old_icon": "minecraft:iron_chestplate"
+ },
+ {
+  "id": "big:Провокация",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Провокация",
+  "about": "Мобы нападают на вас, а не на союзников",
+  "upgrades": [
+   "Провокация: 1: Шире",
+   "Провокация: 2: Шире ещё"
+  ],
+  "old_icon": "minecraft:totem_of_undying"
+ },
+ {
+  "id": "big:Тяжёлая поступь",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Тяжёлая поступь",
+  "about": "Нет замедления в тяжёлой броне",
+  "upgrades": [
+   "Тяжёлая поступь: 1: Быстрее",
+   "Тяжёлая поступь: 2: Быстрее ещё"
+  ],
+  "old_icon": "minecraft:netherite_chestplate"
+ },
+ {
+  "id": "big:Восстановление",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Восстановление",
+  "about": "Лечение вне боя",
+  "upgrades": [
+   "Восстановление: 1: Быстрее",
+   "Восстановление: 2: Быстрее ещё"
+  ],
+  "old_icon": "minecraft:golden_apple"
+ },
+ {
+  "id": "big:Неутомимый",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Неутомимый",
+  "about": "Меньше голода в пути",
+  "upgrades": [
+   "Неутомимый: 1: Сильнее",
+   "Неутомимый: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:map"
+ },
+ {
+  "id": "big:Скороход",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Скороход",
+  "about": "Быстрее бег",
+  "upgrades": [
+   "Скороход: 1: Сильнее",
+   "Скороход: 2: Сильнее ещё"
+  ],
+  "old_icon": "minecraft:leather_boots"
+ },
+ {
+  "id": "big:Мягкое приземление",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Мягкое приземление",
+  "about": "Меньше урона от падения",
+  "upgrades": [
+   "Мягкое приземление: 1: Нет урона"
+  ],
+  "old_icon": "minecraft:oak_boat"
+ },
+ {
+  "id": "big:Ночной путник",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Ночной путник",
+  "about": "Лучше видно ночью",
+  "upgrades": [
+   "Ночной путник: 1: Ночное зрение"
+  ],
+  "old_icon": "minecraft:clock"
+ },
+ {
+  "id": "big:Горный шаг",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Горный шаг",
+  "about": "Автоподъём на блок",
+  "upgrades": [
+   "Горный шаг: 1: На два"
+  ],
+  "old_icon": "minecraft:compass"
+ },
+ {
+  "id": "big:Капитан",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Капитан",
+  "about": "Лодка быстрее",
+  "upgrades": [
+   "Капитан: 1: Быстрее",
+   "Капитан: 2: Быстрее ещё"
+  ],
+  "old_icon": "minecraft:map"
+ },
+ {
+  "id": "big:Возвращение домой",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Возвращение домой",
+  "about": "Телепорт домой раз в час",
+  "upgrades": [
+   "Возвращение домой: 1: Короче перезарядка"
+  ],
+  "old_icon": "minecraft:leather_boots"
+ },
+ {
+  "id": "big:Чутьё сокровищ",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Чутьё сокровищ",
+  "about": "Указание на ближайшую структуру",
+  "upgrades": [
+   "Чутьё сокровищ: 1: Больше типов"
+  ],
+  "old_icon": "minecraft:oak_boat"
+ },
+ {
+  "id": "big:Обаяние",
+  "kind": "big",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Обаяние",
+  "about": "Скидка у жителей",
+  "upgrades": [
+   "Обаяние: 1: Больше скидка"
+  ],
+  "old_icon": "minecraft:clock"
+ },
+ {
+  "id": "small:speed:_pickaxe",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Скорость кирки",
+  "about": "speed:_pickaxe +0.015",
+  "old_icon": "minecraft:stone_pickaxe"
+ },
+ {
+  "id": "small:durability:_pickaxe",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Бережная работа",
+  "about": "durability:_pickaxe +0.02",
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "small:extra_ore",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Богатая порода",
+  "about": "extra_ore +0.012",
+  "old_icon": "minecraft:raw_iron"
+ },
+ {
+  "id": "small:mc_xp",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "mining",
+  "name": "Опыт с руды",
+  "about": "mc_xp +0.03",
+  "old_icon": "minecraft:experience_bottle"
+ },
+ {
+  "id": "small:speed:_shovel",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Скорость лопаты",
+  "about": "speed:_shovel +0.015",
+  "old_icon": "minecraft:stone_shovel"
+ },
+ {
+  "id": "small:durability:_shovel",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Бережная работа",
+  "about": "durability:_shovel +0.02",
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "small:extra_digging",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Рыхлый грунт",
+  "about": "extra_digging +0.015",
+  "old_icon": "minecraft:gravel"
+ },
+ {
+  "id": "small:treasure_digging",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "digging",
+  "name": "Находки",
+  "about": "treasure_digging +0.005",
+  "old_icon": "minecraft:gold_nugget"
+ },
+ {
+  "id": "small:speed:_axe",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Скорость топора",
+  "about": "speed:_axe +0.015",
+  "old_icon": "minecraft:stone_axe"
+ },
+ {
+  "id": "small:durability:_axe",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Бережная работа",
+  "about": "durability:_axe +0.02",
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "small:extra_log",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Толстый ствол",
+  "about": "extra_log +0.012",
+  "old_icon": "minecraft:oak_log"
+ },
+ {
+  "id": "small:extra_sapling",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "woodcutting",
+  "name": "Щедрая листва",
+  "about": "extra_sapling +0.025",
+  "old_icon": "minecraft:oak_sapling"
+ },
+ {
+  "id": "small:lure",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Быстрый клёв",
+  "about": "lure +0.01",
+  "old_icon": "minecraft:fishing_rod"
+ },
+ {
+  "id": "small:sea_luck",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Удача рыбака",
+  "about": "sea_luck +0.01",
+  "old_icon": "minecraft:rabbit_foot"
+ },
+ {
+  "id": "small:durability:_fishing_rod",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Крепкая леска",
+  "about": "durability:_fishing_rod +0.02",
+  "old_icon": "minecraft:string"
+ },
+ {
+  "id": "small:extra_fish",
+  "kind": "small",
+  "sector": "gather",
+  "branch": "fishing",
+  "name": "Прибыльный улов",
+  "about": "extra_fish +0.012",
+  "old_icon": "minecraft:cod"
+ },
+ {
+  "id": "small:extra_crop",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Щедрая жатва",
+  "about": "extra_crop +0.015",
+  "old_icon": "minecraft:wheat"
+ },
+ {
+  "id": "small:speed:_hoe",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Скорость мотыги",
+  "about": "speed:_hoe +0.015",
+  "old_icon": "minecraft:stone_hoe"
+ },
+ {
+  "id": "small:durability:_hoe",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Бережная работа",
+  "about": "durability:_hoe +0.02",
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "small:extra_seeds",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "farming",
+  "name": "Богатая земля",
+  "about": "extra_seeds +0.02",
+  "old_icon": "minecraft:wheat_seeds"
+ },
+ {
+  "id": "small:breed_chance",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Забота",
+  "about": "breed_chance +0.01",
+  "old_icon": "minecraft:wheat"
+ },
+ {
+  "id": "small:extra_wool",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Ловкие руки",
+  "about": "extra_wool +0.015",
+  "old_icon": "minecraft:shears"
+ },
+ {
+  "id": "small:tame_chance",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Дрессировка",
+  "about": "tame_chance +0.02",
+  "old_icon": "minecraft:bone"
+ },
+ {
+  "id": "small:animal_health",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "husbandry",
+  "name": "Здоровое стадо",
+  "about": "animal_health +0.02",
+  "old_icon": "minecraft:golden_carrot"
+ },
+ {
+  "id": "small:food_value",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Сытная еда",
+  "about": "food_value +0.015",
+  "old_icon": "minecraft:bread"
+ },
+ {
+  "id": "small:extra_food",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Умелая готовка",
+  "about": "extra_food +0.012",
+  "old_icon": "minecraft:furnace"
+ },
+ {
+  "id": "small:cook_speed",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Быстрый повар",
+  "about": "cook_speed +0.015",
+  "old_icon": "minecraft:smoker"
+ },
+ {
+  "id": "small:food_regen",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "cooking",
+  "name": "Ароматные блюда",
+  "about": "food_regen +0.01",
+  "old_icon": "minecraft:cooked_beef"
+ },
+ {
+  "id": "small:potion_duration",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Долгие зелья",
+  "about": "potion_duration +0.015",
+  "old_icon": "minecraft:potion"
+ },
+ {
+  "id": "small:brew_speed",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Быстрая варка",
+  "about": "brew_speed +0.015",
+  "old_icon": "minecraft:brewing_stand"
+ },
+ {
+  "id": "small:brew_save",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Экономный варщик",
+  "about": "brew_save +0.012",
+  "old_icon": "minecraft:nether_wart"
+ },
+ {
+  "id": "small:potion_resist",
+  "kind": "small",
+  "sector": "farm",
+  "branch": "alchemy",
+  "name": "Стойкий организм",
+  "about": "potion_resist +0.01",
+  "old_icon": "minecraft:milk_bucket"
+ },
+ {
+  "id": "small:reach",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Длинные руки",
+  "about": "reach +0.02",
+  "old_icon": "minecraft:stick"
+ },
+ {
+  "id": "small:block_save",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Экономия блоков",
+  "about": "block_save +0.012",
+  "old_icon": "minecraft:bricks"
+ },
+ {
+  "id": "small:build_speed",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Твёрдая рука",
+  "about": "build_speed +0.015",
+  "old_icon": "minecraft:stone"
+ },
+ {
+  "id": "small:own_break_speed",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "building",
+  "name": "Лёгкий разбор",
+  "about": "own_break_speed +0.02",
+  "old_icon": "minecraft:iron_pickaxe"
+ },
+ {
+  "id": "small:ingredient_save",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Запасливость",
+  "about": "ingredient_save +0.012",
+  "old_icon": "minecraft:chest"
+ },
+ {
+  "id": "small:craft_double",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Двойной результат",
+  "about": "craft_double +0.01",
+  "old_icon": "minecraft:crafting_table"
+ },
+ {
+  "id": "small:redstone_save",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Экономия механизмов",
+  "about": "redstone_save +0.012",
+  "old_icon": "minecraft:redstone"
+ },
+ {
+  "id": "small:craft_xp",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "crafting",
+  "name": "Опыт ремесла",
+  "about": "craft_xp +0.02",
+  "old_icon": "minecraft:experience_bottle"
+ },
+ {
+  "id": "small:item_durability",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Прочность изделий",
+  "about": "item_durability +0.015",
+  "old_icon": "minecraft:iron_ingot"
+ },
+ {
+  "id": "small:fuel_save",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Экономия топлива",
+  "about": "fuel_save +0.015",
+  "old_icon": "minecraft:coal"
+ },
+ {
+  "id": "small:extra_ingot",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Лишний слиток",
+  "about": "extra_ingot +0.012",
+  "old_icon": "minecraft:iron_ingot"
+ },
+ {
+  "id": "small:repair_save",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "smithing",
+  "name": "Дешёвая починка",
+  "about": "repair_save +0.015",
+  "old_icon": "minecraft:anvil"
+ },
+ {
+  "id": "small:enchant_save",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Дешёвые чары",
+  "about": "enchant_save +0.012",
+  "old_icon": "minecraft:lapis_lazuli"
+ },
+ {
+  "id": "small:enchant_power",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Сильные чары",
+  "about": "enchant_power +0.01",
+  "old_icon": "minecraft:enchanted_book"
+ },
+ {
+  "id": "small:xp_gain",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Поток опыта",
+  "about": "xp_gain +0.015",
+  "old_icon": "minecraft:experience_bottle"
+ },
+ {
+  "id": "small:enchant_luck",
+  "kind": "small",
+  "sector": "craft",
+  "branch": "enchanting",
+  "name": "Удачные чары",
+  "about": "enchant_luck +0.01",
+  "old_icon": "minecraft:book"
+ },
+ {
+  "id": "small:melee_damage",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Сила удара",
+  "about": "melee_damage +0.01",
+  "old_icon": "minecraft:iron_sword"
+ },
+ {
+  "id": "small:attack_speed",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Скорость атаки",
+  "about": "attack_speed +0.01",
+  "old_icon": "minecraft:feather"
+ },
+ {
+  "id": "small:lifesteal",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Живучесть в бою",
+  "about": "lifesteal +0.005",
+  "old_icon": "minecraft:golden_apple"
+ },
+ {
+  "id": "small:crit",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "melee",
+  "name": "Точный удар",
+  "about": "crit +0.01",
+  "old_icon": "minecraft:spectral_arrow"
+ },
+ {
+  "id": "small:ranged_damage",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Урон снарядов",
+  "about": "ranged_damage +0.01",
+  "old_icon": "minecraft:arrow"
+ },
+ {
+  "id": "small:draw_speed",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Быстрая натяжка",
+  "about": "draw_speed +0.01",
+  "old_icon": "minecraft:bow"
+ },
+ {
+  "id": "small:arrow_save",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Экономия стрел",
+  "about": "arrow_save +0.015",
+  "old_icon": "minecraft:arrow"
+ },
+ {
+  "id": "small:projectile_speed",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "archery",
+  "name": "Дальность",
+  "about": "projectile_speed +0.01",
+  "old_icon": "minecraft:spectral_arrow"
+ },
+ {
+  "id": "small:armor",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Броня",
+  "about": "armor +0.01",
+  "old_icon": "minecraft:iron_chestplate"
+ },
+ {
+  "id": "small:max_health",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Запас здоровья",
+  "about": "max_health +0.01",
+  "old_icon": "minecraft:golden_apple"
+ },
+ {
+  "id": "small:durability:shield",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Крепкий щит",
+  "about": "durability:shield +0.02",
+  "old_icon": "minecraft:shield"
+ },
+ {
+  "id": "small:knockback_resist",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "defense",
+  "name": "Стойкость",
+  "about": "knockback_resist +0.01",
+  "old_icon": "minecraft:iron_boots"
+ },
+ {
+  "id": "small:move_speed",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Скорость",
+  "about": "move_speed +0.008",
+  "old_icon": "minecraft:leather_boots"
+ },
+ {
+  "id": "small:hunger_save",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Выносливость",
+  "about": "hunger_save +0.015",
+  "old_icon": "minecraft:bread"
+ },
+ {
+  "id": "small:loot_luck",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Удача странника",
+  "about": "loot_luck +0.01",
+  "old_icon": "minecraft:compass"
+ },
+ {
+  "id": "small:fall_save",
+  "kind": "small",
+  "sector": "roam",
+  "branch": "exploration",
+  "name": "Лёгкие шаги",
+  "about": "fall_save +0.015",
+  "old_icon": "minecraft:feather"
+ },
+ {
+  "id": "small:pickup_radius",
+  "kind": "small",
+  "sector": "gather",
+  "branch": null,
+  "name": "Притяжение",
+  "about": "Предметы притягиваются издалека",
+  "old_icon": "minecraft:hopper"
+ }
+]

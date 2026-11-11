@@ -1,0 +1,24 @@
+{
+ "_note": "One character per pixel. A dot is transparent. Ramps run dark to light. Use only these colours.",
+ "colours": {
+  "K": ["#141414", "outline black"], "k": ["#2b2b2b", "outline dark grey"],
+  "1": ["#3a3a3a", "stone 1"], "2": ["#565656", "stone 2"], "3": ["#767676", "stone 3"], "4": ["#979797", "stone/iron 4"],
+  "5": ["#b8b8b8", "iron 5"], "6": ["#d8d8d8", "iron 6"], "7": ["#ffffff", "white"],
+  "a": ["#3b2a14", "wood 1"], "b": ["#5a3f1e", "wood 2"], "c": ["#7d5c2f", "wood 3"], "d": ["#a37f48", "wood 4"], "e": ["#c9a96c", "wood 5"],
+  "f": ["#5c3a00", "gold 1"], "g": ["#a86f00", "gold 2"], "h": ["#e0a800", "gold 3"], "i": ["#fde65a", "gold 4"], "j": ["#fff7b8", "gold 5"],
+  "l": ["#0e4f4a", "diamond 1"], "m": ["#1aa6a0", "diamond 2"], "n": ["#4fe0d6", "diamond 3"], "o": ["#b9fff6", "diamond 4"],
+  "p": ["#00491f", "emerald 1"], "q": ["#0f8a3a", "emerald 2"], "r": ["#3cd36a", "emerald 3"], "s": ["#a7ffbe", "emerald 4"],
+  "t": ["#4a0606", "red 1"], "u": ["#8a1010", "red 2"], "v": ["#d42a2a", "red 3"], "x": ["#ff7a6a", "red 4"],
+  "y": ["#0d1f5c", "lapis 1"], "z": ["#1c3fa8", "lapis 2"], "A": ["#3f72e8", "lapis 3"], "B": ["#9ec1ff", "lapis 4"],
+  "C": ["#1e3d10", "leaf 1"], "D": ["#2f6b1a", "leaf 2"], "E": ["#4c9a2a", "leaf 3"], "F": ["#86c95a", "leaf 4"],
+  "G": ["#6b5418", "straw 1"], "H": ["#a8862c", "straw 2"], "I": ["#d8bc5a", "straw 3"],
+  "J": ["#1f4f9c", "water 1"], "L": ["#3a7ad6", "water 2"], "M": ["#79b4f2", "water 3"],
+  "N": ["#6e1e00", "fire 1"], "O": ["#c44a00", "fire 2"], "P": ["#ff8a1a", "fire 3"], "Q": ["#ffd34a", "fire 4"],
+  "R": ["#2c0f4a", "magic 1"], "S": ["#5c2a9a", "magic 2"], "T": ["#9a5ae0", "magic 3"], "U": ["#d9b8ff", "magic 4"],
+  "V": ["#6a2020", "flesh 1"], "W": ["#b0484a", "flesh 2"], "X": ["#e88a7a", "flesh 3"], "Y": ["#ffc2b0", "flesh 4"],
+  "#": ["#4a2a12", "leather/dirt 1"], "$": ["#7a4a22", "leather/dirt 2"], "%": ["#a8703a", "leather/dirt 3"],
+  "&": ["#2a2228", "netherite 1"], "*": ["#4a3e48", "netherite 2"], "+": ["#6e6070", "netherite 3"],
+  "=": ["#cfc8b8", "wool/bone 1"], "?": ["#f0ece0", "wool/bone 2"],
+  "@": ["#7a3a1e", "copper 1"], "^": ["#c06a3a", "copper 2"], "~": ["#f0a070", "copper 3"]
+ }
+}

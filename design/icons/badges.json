@@ -1,0 +1,101 @@
+{
+ "speed": [
+  "...KKKK",
+  "..KQQPK",
+  ".KQQPK.",
+  "KQQQQQK",
+  ".KKPQK.",
+  "..KPK..",
+  ".KK...."
+ ],
+ "extra": [
+  "..KKK..",
+  "..KrK..",
+  "KKKrKKK",
+  "KrrsrrK",
+  "KKKrKKK",
+  "..KrK..",
+  "..KKK.."
+ ],
+ "health": [
+  ".KK.KK.",
+  "KxvKxvK",
+  "KvvvvvK",
+  "KvvvvuK",
+  ".KvvuK.",
+  "..KuK..",
+  "...K..."
+ ],
+ "durability": [
+  "KKKKKKK",
+  "K66654K",
+  "K65554K",
+  "K65543K",
+  ".K543K.",
+  "..K3K..",
+  "...K..."
+ ],
+ "xp": [
+  ".KKKKK.",
+  "KssrrqK",
+  "KsrrrqK",
+  "KrrrqqK",
+  "KrrqqpK",
+  "KqqqppK",
+  ".KKKKK."
+ ],
+ "time": [
+  ".KKKKK.",
+  "Ki777gK",
+  "K77K77K",
+  "K77KK7K",
+  "K77777K",
+  "Kg777fK",
+  ".KKKKK."
+ ],
+ "save": [
+  "..KKK..",
+  ".K454K.",
+  ".K4K4K.",
+  "KKKKKKK",
+  "KihhhgK",
+  "KhhKhgK",
+  "KKKKKKK"
+ ],
+ "chance": [
+  "KKKKKKK",
+  "K77776K",
+  "K7K776K",
+  "K77K76K",
+  "K777K5K",
+  "K66655K",
+  "KKKKKKK"
+ ],
+ "damage": [
+  "....KKK",
+  "...KxvK",
+  "..KxvK.",
+  ".KxvK..",
+  "KxvK...",
+  "KvK....",
+  "KK....."
+ ],
+ "range": [
+  ".KKKKK.",
+  "KBAAAzK",
+  "KAKKKzK",
+  "KAK7KzK",
+  "KAKKKzK",
+  "KzzzzyK",
+  ".KKKKK."
+ ],
+ "fire": [
+  "...K...",
+  "..KPK..",
+  ".KPQPK.",
+  "KPQQQPK",
+  "KPQjQPK",
+  "KOPQPOK",
+  ".KKKKK."
+ ]
+}

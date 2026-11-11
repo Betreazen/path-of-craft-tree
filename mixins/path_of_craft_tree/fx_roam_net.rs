@@ -1,0 +1,3 @@
+fn path_of_craft_tree_fx_roam_net(player: u128, channel: &str, data: &[u8]) {
+    crate::game::pct_fx_roam_world::on_client_message(player, channel, data);
+}
