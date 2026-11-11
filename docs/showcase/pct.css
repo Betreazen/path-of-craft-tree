@@ -1,0 +1,39 @@
+/* Path-of-craft-tree's own parts on top of RustCraft's guide stylesheet (style.css, kept identical). */
+.brand b { letter-spacing: 0; }
+.icon canvas { image-rendering: pixelated; }
+#nav .tier, .head .tier { color: #14161b; }
+.head .icon { padding: 6px; }
+
+/* The tree stage: a canvas sized by the script, a tooltip like the game's. */
+.stage { aspect-ratio: auto; display: block; background: #0b0b0e; }
+.stage .view { position: relative; }
+.stage canvas.tree { display: block; cursor: grab; touch-action: none; }
+.stage.shot img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.legend-row canvas { width: 14px; height: 14px; image-rendering: pixelated; }
+.pct-tip { width: auto; max-width: 300px; background: #100010f0; border: 2px solid #2a0a5e; box-shadow: inset 0 0 0 1px #5000ff55; font: 14px/1.45 var(--mono); color: #fff; }
+.pct-tip b { display: block; margin-bottom: 2px; font-size: 14px; }
+.pct-tip .gold { color: #ffaa00; }
+.pct-tip .grey { color: #aaaaaa; }
+.pct-tip .aqua { color: #55ffff; }
+.pct-tip .green { color: #55ff55; }
+.pct-tip .dark { color: #555555; }
+.pct-tip .red { color: #ff5555; }
+.controls .count { margin-left: auto; }
+
+/* Tables and node cards on the pages. */
+.pct-table { width: auto; min-width: 50%; }
+.pct-table th { background: var(--panel2); color: var(--dim); font: 700 12px var(--mono); text-transform: uppercase; letter-spacing: 0.5px; }
+.pct-table.num td:not(:first-child) { font-family: var(--mono); font-size: 13px; }
+.pct-table td:first-child code { white-space: nowrap; }
+.pct-table td code.fmt { white-space: normal; word-break: break-word; }
+code { font-family: var(--mono); font-size: 0.9em; color: var(--cyan); }
+.bigs { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.big { padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); }
+.big-head { display: flex; align-items: center; gap: 8px; }
+.big-head .icon { width: 32px; height: 32px; background: #0f1116; border: 1px solid var(--copper); padding: 2px; }
+.big-head b { color: #ffaa00; font-size: 15px; }
+.big p { margin: 6px 0 4px; font-size: 14px; color: #f1f3f7; }
+.big ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; color: var(--dim); }
+.big li { margin: 2px 0; }
+.big .up { color: var(--text); }
+.see .icon { width: 28px; height: 28px; }

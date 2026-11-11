@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path-of-craft-tree · Справочник профессий</title>
+<!-- style.css is RustCraft's guide stylesheet, copied as is so every mod's page looks alike; pct.css adds this mod's parts. -->
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="pct.css">
+</head>
+<body>
+<div class="top">
+  <a class="brand" href="#overview"><b>Path-of-craft-tree</b><span>Справочник профессий</span></a>
+  <input id="search" type="search" placeholder="Поиск по справочнику" aria-label="Поиск по справочнику">
+  <a class="toplink" href="#tree">Всё дерево</a>
+  <span class="draft">Числа взяты из данных мода и меняются вместе с балансом</span>
+</div>
+<div id="err" role="alert"></div>
+<div class="layout">
+  <nav id="nav" aria-label="Разделы справочника"></nav>
+  <main id="main"></main>
+</div>
+<script src="js/data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/tree.js"></script>
+<script src="js/pages.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

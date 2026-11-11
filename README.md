@@ -27,6 +27,8 @@
 - **Сброс дерева** стоит 5 уровней обычного опыта Minecraft.
 - **Баланс живёт в данных.** Опыт за действия, кривая уровней и все узлы лежат в `data/tree.json`.
 
+Справочник по всем профессиям с живым деревом, которое можно покрутить и поизучать: [docs/showcase/index.html](docs/showcase/index.html). Он открывается прямо с диска. Данные для него собирает `node design/tools/showcase-data.mjs`.
+
 <table>
 <tr>
 <td width="50%"><img src="docs/images/tooltip.png" alt="Подсказка узла с двумя рангами"></td>

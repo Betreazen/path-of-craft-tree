@@ -40,7 +40,7 @@ game.native_run_mod_command(&format!("pct-machine smelt {owner:032x} {item} {cou
 | `chunk` | `pct-machine chunk <владелец> <измерение> <чанк x> <чанк z>` | Машина-разведчик впервые въехала в чанк |
 | `biome` | `pct-machine biome <владелец> <биом>` | Машина-разведчик нашла биом |
 | `structure` | `pct-machine structure <владелец> <постройка>` | Машина-разведчик нашла постройку |
-| `repair`, `breed`, `shear`, `honey`, `brush`, `brew`, `enchant` | `pct-machine <вид> <владелец> <количество>` | Работа, которая оплачивается поштучно (ниже) |
+| `repair`, `breed`, `shear`, `honey`, `brush`, `brew`, `enchant` | `pct-machine <вид> <владелец> <количество>` | Поштучная работа: починка, разведение, стрижка, мёд, расчистка, варка, зачарование |
 | `shot` | `pct-machine shot <игрок> <id сущности> <тип моба>` | Оружие вашего мода в руках игрока убило моба |
 
 ### break
