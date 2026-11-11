@@ -58,6 +58,11 @@ fn apply(game: &mut Game<'_>, report: Report) {
             entity,
             kind,
         } => actions::on_machine_kill(game, owner, entity, &kind),
+        Report::Slaughter {
+            owner,
+            entity,
+            kind,
+        } => actions::on_machine_slaughter(game, owner, entity, &kind),
         Report::Shot {
             player,
             entity,

@@ -262,6 +262,36 @@ pub fn on_machine_kill(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str
     earn(game, tree, owner, "act:shot", times, None);
 }
 
+/// A machine (a slaughterer in a pen) killed farm animal `entity`. That is husbandry work, not a
+/// fight: the owner earns, at the machine share, the related husbandry experience a player's kill
+/// of that animal pays, and nothing for melee, so a feeder and a slaughterer cannot farm a combat
+/// branch. Mobs that are not farm animals pay nothing.
+pub fn on_machine_slaughter(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str) {
+    let Some(loaded) = glue::current_tree() else {
+        return;
+    };
+    let tree = &loaded.tree;
+    if !tree.in_list("animals", kind) || is_creative(game, owner) {
+        return;
+    }
+    let health = tree
+        .number("mob_health", kind)
+        .unwrap_or(DEFAULT_MOB_HEALTH);
+    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(entity);
+    let amount = health * factor * tree.machine_share;
+    let change = |tree: &Tree, profile: &mut Profile| {
+        tree.add_cross_xp(profile, "husbandry", amount);
+    };
+    glue::grant(
+        game,
+        tree,
+        owner,
+        "husbandry",
+        change,
+        amount * tree.cross_share,
+    );
+}
+
 /// A player's own ranged weapon from a machine mod killed mob `entity`: paid in full, as a bow.
 pub fn on_reported_shot(game: &mut Game<'_>, player: u128, entity: u32, kind: &str) {
     earn_mob_shot(game, player, entity, kind);

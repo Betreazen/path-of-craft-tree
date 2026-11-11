@@ -136,6 +136,12 @@ pub enum Report {
         entity: u32,
         kind: String,
     },
+    /// The machine slaughtered farm animal `entity` of `kind` in a pen: husbandry, not combat.
+    Slaughter {
+        owner: u128,
+        entity: u32,
+        kind: String,
+    },
     /// A player's own ranged weapon from the machine mod (an energy rifle) killed mob `entity`:
     /// the player earns in full, as for a bow, since the shot was theirs.
     Shot {
@@ -242,6 +248,11 @@ pub fn parse(line: &str) -> Result<Report, String> {
             crafts: words.count("crafts")?,
         },
         "kill" => Report::Kill {
+            owner: words.owner()?,
+            entity: words.whole("entity")?,
+            kind: words.text("kind")?,
+        },
+        "slaughter" => Report::Slaughter {
             owner: words.owner()?,
             entity: words.whole("entity")?,
             kind: words.text("kind")?,
@@ -363,6 +374,14 @@ mod tests {
 
     #[test]
     fn shot_fish_milk_and_build_reports_read_back() {
+        assert_eq!(
+            parse("slaughter 0123abcd456789ef0123456789abcdef 88 minecraft:cow"),
+            Ok(Report::Slaughter {
+                owner: OWNER,
+                entity: 88,
+                kind: "minecraft:cow".to_owned(),
+            })
+        );
         assert_eq!(
             parse("shot 0123abcd456789ef0123456789abcdef 77 minecraft:skeleton"),
             Ok(Report::Shot {
