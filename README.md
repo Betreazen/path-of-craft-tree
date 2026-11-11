@@ -97,8 +97,8 @@ horizon-launcher native-build --trust-native-code
 ```powershell
 git clone https://github.com/Betreazen/path-of-craft-tree
 horizon-launcher native-build path-of-craft-tree/mixins/path_of_craft_tree `
-    --server-output C:\horizon-engines\pct-0.3.0 --version <версия Horizon> --trust-native-code
-horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.3.0\horizon-engine.exe
+    --server-output C:\horizon-engines\pct-0.4.0 --version <версия Horizon> --trust-native-code
+horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.0\horizon-engine.exe
 horizon-server --dir <папка сервера> restart
 ```
 
