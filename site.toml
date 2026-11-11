@@ -1,0 +1,6 @@
+# The mod's page on the server site: https://minecraft-on-rust.duckdns.org:8443/mods
+name = "Path of Craft Tree"
+tagline = "Дерево умений: 16 профессий, 995 узлов"
+description = "site/description.md"
+preview = "docs/showcase/img/tree.png"
+showcase = "docs/showcase"
