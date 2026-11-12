@@ -31,6 +31,9 @@ $Lock = if ($env:PCT_HEAVY_LOCK) { $env:PCT_HEAVY_LOCK }
 $Bundle = Join-Path $PSScriptRoot 'mixins\path_of_craft_tree'
 $EnginesKept = 3
 $CoreShare = 0.9
+# A build the launcher refuses because another one runs ends within seconds; a real failure takes longer.
+$RefusalWindow = [TimeSpan]::FromSeconds(20)
+$BuildTries = 20
 
 function Invoke-Tests {
     Push-Location $PSScriptRoot
@@ -76,13 +79,33 @@ function Invoke-Build([string[]]$Arguments, [string]$Name) {
     $env:PCT_EXTERNAL_TREE = if ($BuildProfile -eq 'dev') { '1' } else { $null }
     $env:PCT_PERF = if ($Perf) { '1' } else { $null }
     $timer = [Diagnostics.Stopwatch]::StartNew()
-    $process = Start-Process $Launcher -ArgumentList $Arguments -PassThru -NoNewWindow
-    $null = $process.Handle
-    $threads = [int][Math]::Floor([Environment]::ProcessorCount * $CoreShare)
-    $process.ProcessorAffinity = [IntPtr]((1L -shl $threads) - 1)
-    $process.WaitForExit()
+    # The launcher runs one native build at a time on the PC (other mods' benches build too), and
+    # refuses at once while one runs: wait for it, and try again if another slipped in first.
+    for ($try = 1; ; $try++) {
+        Wait-OtherBuilds
+        $started = [Diagnostics.Stopwatch]::StartNew()
+        $process = Start-Process $Launcher -ArgumentList $Arguments -PassThru -NoNewWindow
+        $null = $process.Handle
+        $threads = [int][Math]::Floor([Environment]::ProcessorCount * $CoreShare)
+        try { $process.ProcessorAffinity = [IntPtr]((1L -shl $threads) - 1) } catch { }
+        $process.WaitForExit()
+        $refusedAtOnce = $process.ExitCode -ne 0 -and $started.Elapsed -lt $RefusalWindow
+        if (-not $refusedAtOnce -or $try -ge $BuildTries) { break }
+        Write-Host "$Name build refused at once: another build started first; trying again"
+    }
     if ($process.ExitCode -ne 0) { throw "$Name build failed with exit code $($process.ExitCode)" }
     Write-Host "$Name built in $([int]$timer.Elapsed.TotalSeconds) s"
+}
+
+# Waits while any native build of the launcher runs on this PC.
+function Wait-OtherBuilds {
+    while ($true) {
+        $running = @(Get-CimInstance Win32_Process -Filter "Name='horizon-launcher.exe'" |
+            Where-Object { $_.CommandLine -match 'native-build' })
+        if ($running.Count -eq 0) { return }
+        Write-Host "Another native build is running (pid $($running[0].ProcessId)); waiting"
+        Start-Sleep -Seconds 5
+    }
 }
 
 function Build-Server {
