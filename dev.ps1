@@ -89,7 +89,10 @@ function Invoke-Build([string[]]$Arguments, [string]$Name) {
         $threads = [int][Math]::Floor([Environment]::ProcessorCount * $CoreShare)
         try { $process.ProcessorAffinity = [IntPtr]((1L -shl $threads) - 1) } catch { }
         $process.WaitForExit()
-        $refusedAtOnce = $process.ExitCode -ne 0 -and $started.Elapsed -lt $RefusalWindow
+        # A quick failure is a refusal only when another build is in fact running now; otherwise it
+        # is a real error (a mixin the game refuses, a broken path) and trying again won't help.
+        $refusedAtOnce = $process.ExitCode -ne 0 -and $started.Elapsed -lt $RefusalWindow -and
+            @(Get-OtherBuilds).Count -gt 0
         if (-not $refusedAtOnce -or $try -ge $BuildTries) { break }
         Write-Host "$Name build refused at once: another build started first; trying again"
     }
@@ -97,11 +100,16 @@ function Invoke-Build([string[]]$Arguments, [string]$Name) {
     Write-Host "$Name built in $([int]$timer.Elapsed.TotalSeconds) s"
 }
 
+# The launcher's native builds running on this PC now.
+function Get-OtherBuilds {
+    Get-CimInstance Win32_Process -Filter "Name='horizon-launcher.exe'" |
+        Where-Object { $_.CommandLine -match 'native-build' }
+}
+
 # Waits while any native build of the launcher runs on this PC.
 function Wait-OtherBuilds {
     while ($true) {
-        $running = @(Get-CimInstance Win32_Process -Filter "Name='horizon-launcher.exe'" |
-            Where-Object { $_.CommandLine -match 'native-build' })
+        $running = @(Get-OtherBuilds)
         if ($running.Count -eq 0) { return }
         Write-Host "Another native build is running (pid $($running[0].ProcessId)); waiting"
         Start-Sleep -Seconds 5
