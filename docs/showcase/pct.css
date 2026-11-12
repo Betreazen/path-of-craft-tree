@@ -37,3 +37,139 @@ code { font-family: var(--mono); font-size: 0.9em; color: var(--cyan); }
 .big li { margin: 2px 0; }
 .big .up { color: var(--text); }
 .see .icon { width: 28px; height: 28px; }
+
+/* ---------------------------------------------------------------------------------------------
+   Interaction layer (2026-11-12): palette, details panel, toasts, rolling numbers, light effects.
+   Patterns after cmdk, Vaul, Sonner, NumberFlow and Magic UI; plain CSS, no library.
+   Colours of this layer: swap these tokens for the site's palette in one place. */
+:root {
+  --pct-brass: #d4a24c;
+  --pct-ember: #e8743b;
+  --pct-mark: #ffd36b;
+  --pct-surface: #15171e;
+  --pct-surface-2: #1f232d;
+  --pct-edge: #353b4a;
+  --pct-glow: rgba(212, 162, 76, 0.16);
+  --pct-scrim: rgba(5, 6, 9, 0.62);
+  --pct-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --pct-radius: 8px;
+  --pct-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+@property --pct-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+kbd { display: inline-block; padding: 1px 5px; font: 11px/1.4 var(--mono); color: var(--dim); background: var(--panel2); border: 1px solid var(--pct-edge); border-bottom-width: 2px; border-radius: 4px; }
+.pct-find:focus-visible, .node-link:focus-visible, .act:focus-visible, .pct-drawer .x:focus-visible, .spot:focus-visible, .chip-branch:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* The palette's button in the top bar. */
+.pct-find { display: inline-flex; align-items: center; gap: 10px; padding: 6px 8px 6px 10px; background: var(--panel); border: 1px solid var(--line); color: var(--dim); font: 14px "Segoe UI", system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+.pct-find:hover { border-color: var(--pct-brass); color: var(--text); }
+
+/* Shared backdrop of the palette and the details panel. */
+.pct-scrim { position: absolute; inset: 0; background: var(--pct-scrim); backdrop-filter: blur(2px); opacity: 0; transition: opacity 0.25s ease; }
+.open > .pct-scrim { opacity: 1; }
+
+/* Command palette (cmdk). */
+.pct-palette-root { position: fixed; inset: 0; z-index: 50; }
+.pct-palette { position: relative; display: flex; flex-direction: column; width: min(640px, calc(100vw - 24px)); max-height: 72vh; margin: 11vh auto 0; background: var(--pct-surface); border: 1px solid var(--pct-edge); border-radius: var(--pct-radius); box-shadow: var(--pct-shadow), 0 0 0 1px rgba(212, 162, 76, 0.08); overflow: hidden; animation: pct-pop 0.16s var(--pct-ease); }
+.pct-palette .bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--pct-edge); }
+.pct-palette .glass { color: var(--pct-brass); font-size: 18px; }
+.pct-palette input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--text); font: 16px "Segoe UI", system-ui, sans-serif; }
+.pct-palette input::placeholder { color: var(--dim); }
+.pct-palette .list { overflow-y: auto; padding: 6px; overscroll-behavior: contain; }
+.pct-palette .g-title { display: flex; align-items: center; gap: 6px; padding: 10px 10px 4px; font: 700 11px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+.pct-palette .g-title i, .pct-palette .dot { display: inline-block; width: 8px; height: 8px; flex: none; }
+.pct-palette .opt { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+.pct-palette .opt[aria-selected="true"] { background: var(--pct-surface-2); box-shadow: inset 3px 0 0 var(--pct-brass); }
+.pct-palette .ic canvas { display: block; width: 24px; height: 24px; image-rendering: pixelated; }
+.pct-palette .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pct-palette mark { background: none; color: var(--pct-mark); font-weight: 700; }
+.pct-palette .meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); white-space: nowrap; }
+.pct-palette .foot { display: flex; align-items: center; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--pct-edge); font-size: 12px; color: var(--dim); }
+.pct-palette .foot .n { margin-left: auto; }
+.pct-palette .empty { padding: 28px 16px; text-align: center; color: var(--dim); }
+
+/* Node details: a side panel, a bottom sheet on phones (Vaul). */
+.pct-drawer-root { position: fixed; inset: 0; z-index: 40; }
+.pct-drawer { position: absolute; top: 0; right: 0; display: flex; flex-direction: column; width: min(420px, 92vw); height: 100%; background: var(--pct-surface); border-left: 1px solid var(--pct-edge); box-shadow: var(--pct-shadow); transform: translateX(100%); transition: transform 0.32s var(--pct-ease); }
+.open > .pct-drawer { transform: none; }
+.pct-drawer.dragging { transition: none; }
+.pct-drawer .grip { display: none; }
+.pct-drawer .x { position: absolute; top: 10px; right: 10px; z-index: 1; width: 32px; height: 32px; background: var(--panel2); border: 1px solid var(--line); color: var(--text); font-size: 20px; line-height: 1; cursor: pointer; }
+.pct-drawer .x:hover { border-color: var(--pct-brass); }
+.pct-drawer .body { flex: 1; overflow-y: auto; padding: 20px 20px 28px; overscroll-behavior: contain; }
+.pct-drawer .head { display: flex; align-items: center; gap: 14px; padding-right: 40px; }
+.pct-drawer .big-icon { flex: none; padding: 6px; background: #0f1116; border: 1px solid var(--pct-brass); box-shadow: 0 0 18px var(--pct-glow); }
+.pct-drawer .big-icon canvas { display: block; image-rendering: pixelated; }
+.pct-drawer h2 { margin: 0 0 6px; font: 700 21px/1.2 "Segoe UI", system-ui, sans-serif; color: #ffaa00; text-transform: none; letter-spacing: 0; }
+.pct-drawer .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pct-drawer .chip-branch { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; background: var(--panel2); color: var(--text); font-size: 13px; }
+.pct-drawer .chip-branch i { display: inline-block; width: 9px; height: 9px; }
+.pct-drawer .chip-kind { padding: 2px 8px; border: 1px solid var(--line); color: var(--dim); font: 12px/1.6 var(--mono); }
+.pct-drawer .kind-big { border-color: var(--pct-brass); color: var(--pct-brass); }
+.pct-drawer h3 { margin: 18px 0 6px; font: 700 12px var(--mono); color: var(--copper); text-transform: uppercase; letter-spacing: 1px; }
+.pct-drawer .what { margin: 14px 0 0; font-size: 16px; color: #f1f3f7; }
+.pct-drawer .ranks { margin: 0; padding-left: 22px; }
+.pct-drawer .ranks li { margin: 3px 0; }
+.pct-drawer .fx { margin: 0; font-family: var(--mono); color: var(--ok); }
+.pct-drawer p { margin: 0; }
+.node-link { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0 0 4px; padding: 6px 8px; background: var(--panel); border: 1px solid var(--line); color: var(--text); font: 14px "Segoe UI", system-ui, sans-serif; text-align: left; cursor: pointer; }
+.node-link:hover { border-color: var(--pct-brass); }
+.node-link canvas { display: block; image-rendering: pixelated; }
+.pct-drawer .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.pct-drawer .act { padding: 8px 12px; background: var(--panel2); border: 1px solid var(--pct-brass); color: var(--text); font: 14px "Segoe UI", system-ui, sans-serif; cursor: pointer; }
+.pct-drawer .act:hover { background: var(--pct-surface-2); text-decoration: none; box-shadow: 0 0 14px var(--pct-glow); }
+
+/* Toasts (Sonner). */
+.pct-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; width: min(340px, calc(100vw - 32px)); margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.pct-toast { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--pct-surface); border: 1px solid var(--pct-edge); border-left: 3px solid var(--cyan); border-radius: 6px; box-shadow: var(--pct-shadow); font-size: 14px; pointer-events: auto; cursor: default; animation: pct-toast-in 0.28s var(--pct-ease); }
+.pct-toast.ok { border-left-color: var(--ok); }
+.pct-toast.bad { border-left-color: var(--bad); }
+.pct-toast .mark:empty { display: none; }
+.pct-toast .mark canvas { display: block; width: 24px; height: 24px; image-rendering: pixelated; }
+.pct-toast.out { animation: pct-toast-out 0.22s ease forwards; }
+
+/* Rolling digits (NumberFlow). */
+.roll { display: inline-flex; align-items: baseline; font-variant-numeric: tabular-nums; }
+.roll-col { display: inline-block; height: 1em; line-height: 1em; overflow: hidden; vertical-align: -0.12em; }
+.roll-strip { display: block; white-space: pre; transition: transform 0.6s var(--pct-ease); }
+.count .count-n { color: var(--text); }
+
+/* A slow beam round the live tree (Magic UI's border beam) and a soft glow. */
+.scene.beam { position: relative; box-shadow: 0 0 28px rgba(212, 162, 76, 0.06); }
+.scene.beam::before { content: ""; position: absolute; inset: -1px; z-index: 2; padding: 2px; pointer-events: none; background: conic-gradient(from var(--pct-angle), transparent 0 78%, var(--pct-brass) 88%, var(--pct-ember) 92%, transparent 97%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; filter: drop-shadow(0 0 3px var(--pct-ember)); animation: pct-beam 9s linear infinite; }
+
+/* A light under the pointer on cards (Aceternity's spotlight), and a shimmer on the sector badge. */
+.spot { position: relative; }
+.spot::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 50%), var(--pct-glow), transparent 65%); opacity: 0; transition: opacity 0.25s ease; }
+.spot:hover::after, .spot:focus-visible::after { opacity: 1; }
+.big.spot { cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease; }
+.big.spot:hover { border-color: var(--pct-brass); transform: translateY(-1px); }
+.tier.shine { background-image: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.5) 50%, transparent 62%); background-size: 250% 100%; background-repeat: no-repeat; animation: pct-shine 6s ease-in-out infinite; }
+
+@keyframes pct-pop { from { opacity: 0; transform: translateY(-6px) scale(0.98); } }
+@keyframes pct-toast-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } }
+@keyframes pct-toast-out { to { opacity: 0; transform: translateX(24px); } }
+@keyframes pct-beam { to { --pct-angle: 360deg; } }
+@keyframes pct-shine { 0%, 65% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
+
+.pct-palette .meta .gives { color: var(--ok); font-family: var(--mono); }
+.pct-palette .meta .step { margin-right: 4px; font-family: var(--mono); }
+.pct-palette .meta .br { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 860px) {
+  .pct-find { order: 4; }
+  .pct-find kbd { display: none; }
+  .pct-palette { max-height: calc(100vh - 16px); margin-top: 8px; }
+  .pct-palette .meta .br, .pct-palette .foot span:not(.n) { display: none; }
+  .pct-drawer { top: auto; bottom: 0; left: 0; width: auto; height: auto; max-height: 85vh; border-left: 0; border-top: 1px solid var(--pct-edge); border-radius: 14px 14px 0 0; transform: translateY(100%); }
+  .pct-drawer .grip { display: block; flex: none; width: 44px; height: 5px; margin: 8px auto 2px; background: var(--pct-edge); border-radius: 3px; touch-action: none; }
+  .pct-drawer .head { touch-action: none; }
+  .pct-toasts { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene.beam::before { display: none; }
+  .tier.shine { animation: none; background-image: none; }
+  .pct-palette, .pct-toast, .pct-toast.out { animation: none; }
+  .pct-drawer, .pct-scrim, .roll-strip, .spot::after, .big.spot { transition: none; }
+  .big.spot:hover { transform: none; }
+}

@@ -14,6 +14,8 @@
   const MAX_ZOOM = 3;
   const ZOOM_STEP = 1.25;
   const CLICK_SLOP = 4;
+  const LONG_PRESS_MS = 480;
+  const FOCUS_ZOOM = 1.4;
   const ZONE_RADIUS = 95;
   const ZONE_RES = 0.12; // zone map pixels per world unit
   const LINK = { locked: '#3b3b46', open: '#4bd14b', learned: '#f2c230' };
@@ -85,7 +87,9 @@
 
   class TreeView {
     /**
-     * `opts.focus`: a branch id to frame and highlight; `opts.onChange(view)` after a click learns.
+     * `opts.focus`: a branch id to frame and highlight; `opts.onChange(view)` after a click learns;
+     * `opts.onEvent({ type, node, ... })` for learn, refuse, on, off, reset and details (a long
+     * press or Shift and click asks for a node's details).
      */
     constructor(section, opts) {
       this.opts = opts || {};
@@ -156,6 +160,22 @@
       this.off.clear();
       this.draw();
       if (this.opts.onChange) this.opts.onChange(this);
+      this.emit({ type: 'reset' });
+    }
+
+    emit(event) {
+      if (this.opts.onEvent) this.opts.onEvent(event);
+    }
+
+    /** Centres node `id`, close enough to read its icon, and marks it with a ring. */
+    focusNode(id) {
+      const n = byId.get(id);
+      if (!n) return;
+      this.cx = n.x;
+      this.cy = n.y;
+      this.zoom = Math.max(this.zoom, FOCUS_ZOOM);
+      this.marked = id;
+      this.draw();
     }
 
     toScreen(x, y) {
@@ -191,10 +211,16 @@
 
     click(n) {
       const st = this.state(n);
-      if (st === 'available' || st === 'partial') this.ranks.set(n.id, this.rank(n) + 1);
-      else return;
+      if (st !== 'available' && st !== 'partial') {
+        if (n.k === 'start') return;
+        const why = { locked: 'сначала соседний узел', learned: 'уже изучено', off: 'узел выключен, ПКМ включает' }[st];
+        this.emit({ type: 'refuse', node: n, why });
+        return;
+      }
+      this.ranks.set(n.id, this.rank(n) + 1);
       this.draw();
       if (this.opts.onChange) this.opts.onChange(this);
+      this.emit({ type: 'learn', node: n, rank: this.rank(n), ranks: n.r || 1 });
     }
 
     toggle(n) {
@@ -202,6 +228,7 @@
       if (this.off.has(n.id)) this.off.delete(n.id);
       else this.off.add(n.id);
       this.draw();
+      this.emit({ type: this.off.has(n.id) ? 'off' : 'on', node: n });
     }
 
     // ---- Drawing ----
@@ -286,6 +313,23 @@
         }
       }
       ctx.globalAlpha = 1;
+      this.drawMark();
+    }
+
+    /** A ring around the node the palette or the details panel pointed at. */
+    drawMark() {
+      const n = this.marked != null && byId.get(this.marked);
+      if (!n) return;
+      const { ctx, zoom } = this;
+      const [x, y] = this.toScreen(n.x, n.y);
+      const side = (zoom < 1 ? COMPACT_SIDE[n.k] : SIDE[n.k] * zoom) + 10;
+      ctx.save();
+      ctx.strokeStyle = getComputedStyle(this.canvas).getPropertyValue('--pct-mark').trim() || '#ffd36b';
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(Math.round(x - side / 2) - 0.5, Math.round(y - side / 2) - 0.5, side + 1, side + 1);
+      ctx.restore();
     }
 
     drawLabels() {
@@ -348,6 +392,7 @@
         locked: ['red', 'Нужен соседний узел'],
       }[st];
       if (n.k !== 'start') lines.push('<div class="' + status[0] + '">' + status[1] + '</div>');
+      lines.push('<div class="dark">ⓘ Удержите узел или Shift+клик — подробнее</div>');
       this.tip.innerHTML = lines.join('');
       this.tip.hidden = false;
       const tw = this.tip.offsetWidth;
@@ -366,13 +411,25 @@
       c.addEventListener('pointerdown', (ev) => {
         if (ev.button !== 0) return;
         const [x, y] = local(ev);
-        drag = { x, y, cx: this.cx, cy: this.cy, moved: false, id: ev.pointerId };
+        drag = { x, y, cx: this.cx, cy: this.cy, moved: false, long: false, id: ev.pointerId };
         c.setPointerCapture(ev.pointerId);
+        // A press held in place asks for the node's details instead of learning it.
+        const press = drag;
+        press.timer = setTimeout(() => {
+          const n = !press.moved && this.nodeAt(press.x, press.y);
+          if (!n) return;
+          press.long = true;
+          this.tip.hidden = true;
+          this.emit({ type: 'details', node: n });
+        }, LONG_PRESS_MS);
       });
       c.addEventListener('pointermove', (ev) => {
         const [x, y] = local(ev);
         if (drag) {
-          if (Math.hypot(x - drag.x, y - drag.y) > CLICK_SLOP) drag.moved = true;
+          if (Math.hypot(x - drag.x, y - drag.y) > CLICK_SLOP) {
+            drag.moved = true;
+            clearTimeout(drag.timer);
+          }
           if (drag.moved) {
             this.cx = drag.cx - (x - drag.x) / this.zoom;
             this.cy = drag.cy - (y - drag.y) / this.zoom;
@@ -388,20 +445,30 @@
       c.addEventListener('pointerup', (ev) => {
         if (!drag) return;
         const [x, y] = local(ev);
-        const moved = drag.moved;
+        const { moved, long } = drag;
+        clearTimeout(drag.timer);
         drag = null;
-        if (moved) return;
+        if (moved || long) return;
         const n = this.nodeAt(x, y);
-        if (n) {
-          this.click(n);
-          this.showTip(n, x, y);
+        if (!n) return;
+        if (ev.shiftKey) {
+          this.emit({ type: 'details', node: n });
+          return;
         }
+        this.click(n);
+        this.showTip(n, x, y);
+      });
+      c.addEventListener('pointercancel', () => {
+        if (drag) clearTimeout(drag.timer);
+        drag = null;
       });
       c.addEventListener('pointerleave', () => {
         if (!drag) this.tip.hidden = true;
       });
       c.addEventListener('contextmenu', (ev) => {
         ev.preventDefault();
+        // A touch held down raises contextmenu too: that press is a long press, not a right click.
+        if (drag) return;
         const [x, y] = local(ev);
         const n = this.nodeAt(x, y);
         if (n) {

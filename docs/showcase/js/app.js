@@ -104,20 +104,55 @@
       b.addEventListener('click', fn);
       controls.appendChild(b);
     };
-    const count = el('span', 'count');
-    const update = (v) => {
-      count.textContent = 'изучено рангов: ' + v.learnedCount();
-    };
+    const count = el('span', 'count', 'изучено рангов: ');
+    const counter = el('span', 'count-n');
+    count.appendChild(counter);
+    const update = (v) => PCTNumber.set(counter, v.learnedCount());
     button('−', 'Отдалить', () => view.zoomBy(1 / 1.25));
     button('+', 'Приблизить', () => view.zoomBy(1.25));
     button('Вид по умолчанию', 'Вид по умолчанию', () => view.home(), 'reset');
     button('Сбросить изученное', 'Сбросить изученное', () => view.resetLearned(), 'reset');
     controls.appendChild(count);
     sc.appendChild(controls);
-    view = new PCTTree.TreeView(sc, { focus, onChange: update });
+    sc.classList.add('beam');
+    view = new PCTTree.TreeView(sc, { focus, onChange: update, onEvent: treeEvent });
     // Kept reachable for checks from the browser console.
     window.PCTView = view;
     update(view);
+  }
+
+  // What the tree reports: toasts for learning, refusals and switches; details on a long press.
+  function treeEvent(ev) {
+    const n = ev.node;
+    const pic = () => SP.canvas('icon:' + n.i + ':n', 16);
+    if (ev.type === 'learn') PCTToast.show('Изучено: ' + n.n + (ev.ranks > 1 ? ' ' + ev.rank + '/' + ev.ranks : ''), 'ok', pic());
+    else if (ev.type === 'refuse') PCTToast.show('Нельзя: ' + ev.why, 'bad', pic());
+    else if (ev.type === 'off') PCTToast.show('Выключено: ' + n.n, 'bad', pic());
+    else if (ev.type === 'on') PCTToast.show('Включено: ' + n.n, 'ok', pic());
+    else if (ev.type === 'reset') PCTToast.show('Изученное сброшено', 'info');
+    else if (ev.type === 'details') details(n.id);
+  }
+
+  /** The details panel of node `id`, with a button that shows it on this page's tree when it is there. */
+  function details(id) {
+    const n = nodeById.get(id);
+    const here = view && (!view.focus || view.focus === n.b);
+    PCTDrawer.open(id, {
+      onShow: (node) => {
+        if (here) {
+          view.focusNode(node.id);
+          view.stage.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } else {
+          go(node.b + '?node=' + node.id);
+        }
+      },
+    });
+  }
+
+  /** Goes to `address`, running the route even when the hash is already there. */
+  function go(address) {
+    if (location.hash === '#' + address) route();
+    else location.hash = address;
   }
 
   function shotStage(main, shot) {
@@ -133,7 +168,19 @@
   function statsAside(rows) {
     const side = el('aside');
     side.appendChild(el('h2', null, 'Характеристики'));
-    side.appendChild(el('table', 'stats', rows.map(([k, v]) => '<tr><td>' + k + '</td><td>' + v + '</td></tr>').join('')));
+    const table = el('table', 'stats', rows.map(([k, v]) => '<tr><td>' + k + '</td><td>' + v + '</td></tr>').join(''));
+    side.appendChild(table);
+    // Whole numbers roll up from zero when the page opens, as NumberFlow does.
+    for (const cell of table.querySelectorAll('td:last-child')) {
+      const value = cell.textContent.trim();
+      if (!/^\d+$/.test(value)) continue;
+      // The rolling digits go in a span: the cell itself must stay a table cell.
+      const digits = el('span');
+      cell.textContent = '';
+      cell.appendChild(digits);
+      PCTNumber.set(digits, value.replace(/\d/g, '0'));
+      requestAnimationFrame(() => requestAnimationFrame(() => PCTNumber.set(digits, value)));
+    }
     return side;
   }
 
@@ -187,7 +234,17 @@
     const list = el('div', 'bigs');
     for (const { id: bigId, ups } of S.branches[id].bigs) {
       const big = nodeById.get(bigId);
-      const card = el('div', 'big');
+      const card = el('div', 'big spot');
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', big.n + ': подробнее');
+      card.addEventListener('click', () => details(bigId));
+      card.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          details(bigId);
+        }
+      });
       const head = el('div', 'big-head');
       head.appendChild(nodeIcon(big));
       head.appendChild(el('b', null, big.n));
@@ -216,7 +273,7 @@
     main.appendChild(el('h2', null, 'См. также'));
     const see = el('div', 'see');
     for (const sid of list) {
-      const a = el('a');
+      const a = el('a', 'spot');
       a.href = '#' + sid;
       a.appendChild(icon(byId[sid].icon, byId[sid].branch ? 36 : 16));
       a.appendChild(el('span', null, byId[sid].name));
@@ -226,10 +283,11 @@
   }
 
   // ---------------------------------------------------------------- entry page
-  function show(address) {
+  function show(address, params) {
     const e = byId[address] || byId.overview;
     if (view) view.stop();
     view = null;
+    if (!params.has('node')) PCTDrawer.close();
     const main = $('#main');
     main.innerHTML = '';
     window.scrollTo(0, 0);
@@ -245,8 +303,8 @@
     ht.appendChild(el('h1', null, e.name));
     if (e.branch) {
       const b = S.branches[e.branch];
-      const tag = el('span', 'tier wide', 'Сектор «' + SECTOR_NAME[b.sector] + '» · ' + (b.kinds.small + b.kinds.big + b.kinds.upgrade) + ' узлов');
-      tag.style.background = b.colour;
+      const tag = el('span', 'tier wide shine', 'Сектор «' + SECTOR_NAME[b.sector] + '» · ' + (b.kinds.small + b.kinds.big + b.kinds.upgrade) + ' узлов');
+      tag.style.backgroundColor = b.colour;
       ht.appendChild(tag);
     }
     head.appendChild(ht);
@@ -276,12 +334,60 @@
       main.appendChild(bigNodes(e.branch));
     }
     seeAlso(main, e.see);
+    applyParams(params);
   }
+
+  // The address may carry what to open on the page: #mining?node=5 (that node, shown and
+  // described), ?palette=жила (the palette with a query typed) and ?toast=demo (sample toasts).
+  function applyParams(params) {
+    const id = params.has('node') ? Number(params.get('node')) : NaN;
+    if (nodeById.has(id)) {
+      if (view && (!view.focus || view.focus === nodeById.get(id).b)) view.focusNode(id);
+      details(id);
+    }
+    if (params.has('palette')) PCTPalette.open(params.get('palette'), paletteActions);
+    if (params.get('toast') === 'demo') {
+      PCTToast.stay(true);
+      const n = nodeById.get(5) || S.nodes[1];
+      treeEvent({ type: 'learn', node: n, rank: 1, ranks: 2 });
+      treeEvent({ type: 'refuse', node: n, why: 'сначала соседний узел' });
+      treeEvent({ type: 'reset' });
+    }
+  }
+
+  const paletteActions = {
+    onPage: (id) => go(id),
+    onNode: (n) => go(n.b + '?node=' + n.id),
+  };
+
+  function route() {
+    const [page, query] = decodeURIComponent(location.hash.slice(1)).split('?');
+    show(page || 'overview', new URLSearchParams(query || ''));
+  }
+
+  /** The palette's button in the top bar, beside the sidebar filter. */
+  function paletteButton() {
+    const b = el('button', 'pct-find', '<span>Найти узел…</span><kbd>Ctrl K</kbd>');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Поиск по узлам и страницам (Ctrl+K)');
+    b.addEventListener('click', () => PCTPalette.open('', paletteActions));
+    $('#search').after(b);
+  }
+
+  // A soft light that follows the pointer over cards (.spot), in the manner of Magic UI.
+  document.addEventListener('pointermove', (ev) => {
+    const card = ev.target.closest && ev.target.closest('.spot');
+    if (!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', ev.clientX - r.left + 'px');
+    card.style.setProperty('--my', ev.clientY - r.top + 'px');
+  });
 
   SP.ready
     .then(() => {
       buildNav();
-      const route = () => show(decodeURIComponent(location.hash.slice(1)) || 'overview');
+      paletteButton();
+      PCTPalette.bindKeys(paletteActions);
       window.addEventListener('hashchange', route);
       route();
     })
