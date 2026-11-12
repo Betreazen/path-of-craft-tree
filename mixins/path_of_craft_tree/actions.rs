@@ -786,6 +786,11 @@ pub fn save_chunks(game: &Game<'_>, player: u128) {
     }
 }
 
+/// Self-test only: an empty set of visited chunks, as a player has when they join a new world.
+pub fn start_test_visits(player: u128) {
+    state().visited.insert(player, HashSet::new());
+}
+
 pub fn forget_player(player: u128) {
     let mut state = state();
     state.visited.remove(&player);

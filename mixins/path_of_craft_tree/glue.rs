@@ -265,6 +265,9 @@ fn apply_attributes(game: &mut Game<'_>, tree: &Tree, player: u128, profile: &Pr
 }
 
 fn save_player(game: &Game<'_>, player: u128) {
+    if player == SELFTEST_PLAYER {
+        return;
+    }
     let snapshot = {
         let mut state = server();
         state
@@ -559,6 +562,38 @@ pub fn mark_seen(player: u128, key: String) -> bool {
     first
 }
 
+/// The pretend owner the self-test (selftest.rs) credits. It is online only inside one console
+/// command: nothing is sent to it and its profile is never saved.
+pub const SELFTEST_PLAYER: u128 = 0x7e57_7e57_0000_4000_8000_0000_0000_0001;
+
+/// Self-test only: puts the pretend owner online with a fresh profile, replacing any earlier one.
+pub fn attach_test_player(tree: &Tree) {
+    let profile = tree.new_profile();
+    let entry = Entry {
+        effects: Arc::new(tree.effects(&profile)),
+        profile,
+        dirty: false,
+        feedback_at: Instant::now(),
+        unreported_xp: 0.0,
+        unreported_branch: String::new(),
+    };
+    server().players.insert(SELFTEST_PLAYER, entry);
+}
+
+/// Self-test only: the pretend owner's experience by branch.
+pub fn test_player_xp() -> BTreeMap<String, f64> {
+    server()
+        .players
+        .get(&SELFTEST_PLAYER)
+        .map(|entry| entry.profile.xp.clone())
+        .unwrap_or_default()
+}
+
+/// Self-test only: takes the pretend owner offline again, without saving anything.
+pub fn detach_test_player() {
+    server().players.remove(&SELFTEST_PLAYER);
+}
+
 /// Grants experience and tells the player about it, at most a few times a second.
 pub fn grant(
     game: &mut Game<'_>,
@@ -605,6 +640,9 @@ pub fn grant(
             None
         }
     };
+    if player == SELFTEST_PLAYER {
+        return;
+    }
     if let Some((xp, encoded, leveled, level)) = report {
         let name = tree
             .branches

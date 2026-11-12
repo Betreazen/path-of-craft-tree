@@ -57,6 +57,12 @@ name = "pct_machines"
 source = "machines.rs"
 
 [[module]]
+id = "selftest"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_selftest"
+source = "selftest.rs"
+
+[[module]]
 id = "perf"
 file = "crates/horizon-client/src/game.rs"
 name = "pct_perf"

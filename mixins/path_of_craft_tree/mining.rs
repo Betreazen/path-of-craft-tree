@@ -256,7 +256,7 @@ pub fn player_effects(player: u128) -> Arc<Effects> {
         .unwrap_or_default()
 }
 
-fn block_table(block: &str) -> Option<String> {
+pub fn block_table(block: &str) -> Option<String> {
     let path = block.strip_prefix("minecraft:")?;
     Some(format!("{BLOCK_TABLE_PREFIX}{path}"))
 }
@@ -410,7 +410,7 @@ fn award_break(
 }
 
 /// The related branch a broken block also pays: smelting straight from the ore, nether wart.
-fn break_cross(tree: &Tree, table: &str, ingots: u32) -> Option<(String, f64)> {
+pub fn break_cross(tree: &Tree, table: &str, ingots: u32) -> Option<(String, f64)> {
     if ingots > 0 {
         let cross = tree.smelt_cross.as_ref()?;
         return Some((cross.branch.clone(), cross.xp * f64::from(ingots)));
