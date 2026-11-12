@@ -2,7 +2,7 @@
 # The tree and all balance numbers are data: data/tree.json, written by the example generator.
 [mod]
 id = "path_of_craft_tree"
-version = "0.4.1"
+version = "0.4.2"
 
 # The commit that adds native_player_break_block, which the Vein node needs.
 [compatibility]
