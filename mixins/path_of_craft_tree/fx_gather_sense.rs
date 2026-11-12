@@ -1,12 +1,14 @@
 // Ore Sense: a client-side highlight of nearby ore, started with a hotkey.
-use crate::game::{Game, pct_fx_gather_rules as rules, pct_glue as glue};
+use crate::game::{
+    Game, pct_fx_gather_rules as rules, pct_glue as glue,
+    pct_keys::{self as keys, Key},
+};
 use horizon_client::gizmos::{Gizmos, Line};
 use std::{
     sync::{LazyLock, Mutex, MutexGuard, PoisonError},
     time::{Duration, Instant},
 };
 
-const SENSE_KEY: &str = "key.keyboard.v";
 const SENSE_KEY_EFFECT: &str = "ore_sense";
 const RESCAN_EVERY: Duration = Duration::from_secs(1);
 const RIM_COLOUR: u32 = 0xFFFF_D24A;
@@ -49,7 +51,7 @@ fn client_effect(key: &str) -> f64 {
 }
 
 pub fn on_key(game: &Game<'_>, key: &str, pressed: bool) {
-    if !pressed || key != SENSE_KEY || !game.native_playing() {
+    if !pressed || !keys::is(game, key, Key::OreSense) || !game.native_playing() {
         return;
     }
     if client_effect(SENSE_KEY_EFFECT) <= 0.0 {

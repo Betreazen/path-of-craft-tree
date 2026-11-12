@@ -3,6 +3,7 @@ use crate::game::{
     Game,
     native_player_state::NativeEffect,
     pct_actions as actions, pct_fx_roam_rules as rules, pct_glue as glue,
+    pct_keys::{self as keys, Key},
     pct_mining::{chance, effect, player_effects},
     pct_rules::Effects,
 };
@@ -21,9 +22,6 @@ const COMPASS: &str = "minecraft:compass";
 const COMPASS_TRACKER: &str = "minecraft:lodestone_tracker";
 const VILLAGE_TAG: &str = "minecraft:village";
 const SPEED: &str = "minecraft:speed";
-const HOME_KEY: &str = "key.keyboard.h";
-const COMPASS_KEY: &str = "key.keyboard.j";
-const SENSE_KEY: &str = "key.keyboard.i";
 const JOB_HOME: u8 = 0;
 const JOB_COMPASS: u8 = 1;
 const JOB_SENSE: u8 = 2;
@@ -62,15 +60,19 @@ pub fn on_key(game: &mut Game<'_>, key: &str, pressed: bool) {
     if !pressed {
         return;
     }
-    let job = {
-        let view = glue::client();
-        match key {
-            HOME_KEY if effect(&view.effects, "home") > 0.0 => Some(JOB_HOME),
-            COMPASS_KEY if effect(&view.effects, "cartographer") > 0.0 => Some(JOB_COMPASS),
-            SENSE_KEY if effect(&view.effects, "treasure_sense") > 0.0 => Some(JOB_SENSE),
-            _ => None,
-        }
+    // The key comes first: the player's choices are read outside the client's lock.
+    let wanted = if keys::is(game, key, Key::Home) {
+        Some(("home", JOB_HOME))
+    } else if keys::is(game, key, Key::Cartographer) {
+        Some(("cartographer", JOB_COMPASS))
+    } else if keys::is(game, key, Key::TreasureSense) {
+        Some(("treasure_sense", JOB_SENSE))
+    } else {
+        None
     };
+    let job = wanted.and_then(|(node_effect, job)| {
+        (effect(&glue::client().effects, node_effect) > 0.0).then_some(job)
+    });
     if let Some(job) = job
         && let Err(error) = game.native_net_send_to_server(CHANNEL, &[job])
     {

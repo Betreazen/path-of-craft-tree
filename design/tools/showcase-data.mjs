@@ -42,8 +42,15 @@ const CONSTS = {
   crossShare: tree.cross_share,
   machineShare: tree.machine_share,
   curve: tree.curve,
-  openKey: constant('glue.rs', 'OPEN_KEY').replace(/"/g, '').split('.').pop().toUpperCase(),
+  openKey: defaultKey('tree'),
 };
+
+// The default of one of the tree's rebindable keys in keys.rs, as a letter: `K`.
+function defaultKey(name) {
+  const m = rust('keys.rs').match(new RegExp(`"${name}",\\s*"[^"]*",\\s*"key\\.keyboard\\.([a-z0-9.]+)"`));
+  if (!m) throw new Error(`key ${name} not found in keys.rs`);
+  return m[1].toUpperCase();
+}
 
 // ---- Sectors and branches, in the order of docs/design.md ----
 const SECTORS = [

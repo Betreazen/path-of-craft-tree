@@ -2,7 +2,7 @@
 # The tree and all balance numbers are data: data/tree.json, written by the example generator.
 [mod]
 id = "path_of_craft_tree"
-version = "0.4.2"
+version = "0.4.3"
 
 # The commit that adds native_player_break_block, which the Vein node needs.
 [compatibility]
@@ -61,6 +61,12 @@ id = "selftest"
 file = "crates/horizon-client/src/game.rs"
 name = "pct_selftest"
 source = "selftest.rs"
+
+[[module]]
+id = "keys"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_keys"
+source = "keys.rs"
 
 [[module]]
 id = "perf"
@@ -1802,4 +1808,14 @@ helper = "fx_roam_far_kill.rs"
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
   { name = "context", ty = "&crate::game::native_hooks::NativeLootDrops<'_>", value = "context" },
+]
+
+# The tree's row in Options > Mods, with its rebindable keys (keys.rs).
+[[injection]]
+id = "mods_listed"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+helper = "mods_listed.rs"
+bindings = [
+  { name = "mods", ty = "&mut Vec<crate::mod_api::NativeMod>", value = "&mut *mods" },
 ]

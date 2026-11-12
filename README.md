@@ -64,7 +64,7 @@
 | Рудный нюх · Картограф · Чутьё сокровищ | **V** · **J** · **I** |
 | Возвращение домой · Карманный верстак · Точильщик | **H** · **Y** · **U** |
 
-Клавиши умений работают, когда узел изучен. Остальные приёмы (Линия, Заливка, Замена, Чертёж, Засыпка) описаны в [разделе 9 дизайн-документа](docs/design.md#управление).
+Клавиши умений работают, когда узел изучен. Все клавиши дерева можно переназначить: «Настройки» → «Моды» → кнопка «Настройки» рядом с Path-of-craft-tree. В таблице — клавиши по умолчанию. Остальные приёмы (Линия, Заливка, Замена, Чертёж, Засыпка) описаны в [разделе 9 дизайн-документа](docs/design.md#управление).
 
 ## Установка
 
@@ -97,8 +97,8 @@ horizon-launcher native-build --trust-native-code
 ```powershell
 git clone https://github.com/Betreazen/path-of-craft-tree
 horizon-launcher native-build path-of-craft-tree/mixins/path_of_craft_tree `
-    --server-output C:\horizon-engines\pct-0.4.2 --version <версия Horizon> --trust-native-code
-horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.2\horizon-engine.exe
+    --server-output C:\horizon-engines\pct-0.4.3 --version <версия Horizon> --trust-native-code
+horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.3\horizon-engine.exe
 horizon-server --dir <папка сервера> restart
 ```
 

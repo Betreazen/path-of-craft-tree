@@ -1,6 +1,7 @@
 // The craft sector's shared state and the entry points the bundle's shared flow calls.
 use crate::game::{
     Game, pct_fx_craft_rules as rules,
+    pct_keys::{self as keys, Key},
     pct_mining::{effect, player_effects},
 };
 use horizon_client::{items::ItemStack, mod_api::NativeServerPlayer, text::Text};
@@ -13,8 +14,6 @@ use std::{
 pub const KEY_CHANNEL: &str = "path_of_craft_tree:craft_key";
 pub const KEY_POCKET: u8 = 0;
 pub const KEY_SHARPEN: u8 = 1;
-const POCKET_KEY_NAME: &str = "key.keyboard.y";
-const SHARPEN_KEY_NAME: &str = "key.keyboard.u";
 const MAX_QUEUED_CRAFTS: usize = 64;
 /// Ticks a gift waits: long enough that the client hears the change after its own prediction.
 const GIFT_DELAY_TICKS: u8 = 2;
@@ -284,10 +283,12 @@ pub fn on_key(game: &mut Game<'_>, key: &str, pressed: bool) {
     if !pressed || !game.native_playing() {
         return;
     }
-    let message = match key {
-        POCKET_KEY_NAME => KEY_POCKET,
-        SHARPEN_KEY_NAME => KEY_SHARPEN,
-        _ => return,
+    let message = if keys::is(game, key, Key::PocketBench) {
+        KEY_POCKET
+    } else if keys::is(game, key, Key::Sharpener) {
+        KEY_SHARPEN
+    } else {
+        return;
     };
     if let Err(error) = game.native_net_send_to_server(KEY_CHANNEL, &[message]) {
         log::debug!("path_of_craft_tree: {KEY_CHANNEL} not sent: {error}");

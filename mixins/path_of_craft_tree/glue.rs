@@ -25,7 +25,6 @@ const TOGGLE: &str = "path_of_craft_tree:toggle";
 const RESPEC: &str = "path_of_craft_tree:respec";
 const TREE: &str = "path_of_craft_tree:tree";
 const STATE: &str = "path_of_craft_tree:state";
-const OPEN_KEY: &str = "key.keyboard.k";
 const CONFIG_FILE: &str = "path_of_craft_tree.json";
 
 const RELOAD_EVERY_TICKS: u32 = 40;
@@ -753,7 +752,7 @@ fn open(game: &mut Game<'_>) {
 }
 
 pub fn on_key(game: &mut Game<'_>, key: &str, pressed: bool) {
-    if pressed && key == OPEN_KEY {
+    if pressed && crate::game::pct_keys::is(game, key, crate::game::pct_keys::Key::Tree) {
         open(game);
     }
 }
