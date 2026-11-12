@@ -228,6 +228,20 @@ impl Points<'_> {
     }
 }
 
+/// The branches whose strength other mods read in [`CombatSummary`].
+pub const COMBAT_BRANCHES: [&str; 3] = ["melee", "archery", "defense"];
+/// The shape of [`CombatSummary`]; raised only when it changes in a way readers must know about.
+pub const SUMMARY_VERSION: u32 = 1;
+
+/// A player's combat strength from the tree, kept on the player for other mods to read
+/// (`pct:summary` in their persistent data): `[value, highest]` pairs by branch.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CombatSummary {
+    pub v: u32,
+    pub levels: BTreeMap<String, [u32; 2]>,
+    pub ranks: BTreeMap<String, [u32; 2]>,
+}
+
 /// What a player has earned and spent.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Profile {
@@ -729,6 +743,37 @@ impl Tree {
             *sums.entry(key.clone()).or_insert(0.0) += f64::from(level) * LEVEL_BONUS;
         }
         sums
+    }
+
+    /// What other mods (SoulsCraft) scale their enemies by: for each combat branch, its level with
+    /// the highest level, and its working ranks with all the ranks it has. Switched-off big nodes
+    /// and their upgrades give no strength, so they do not count.
+    pub fn combat_summary(&self, profile: &Profile) -> CombatSummary {
+        let off = self.switched_off(profile);
+        let mut levels = BTreeMap::new();
+        let mut ranks = BTreeMap::new();
+        for branch in COMBAT_BRANCHES {
+            let level = self.branch_level(profile, branch);
+            levels.insert(branch.to_owned(), [level, self.curve.max_level]);
+            let (working, all) = self
+                .nodes
+                .values()
+                .filter(|node| node.branch.as_deref() == Some(branch))
+                .fold((0, 0), |(working, all), node| {
+                    let rank = if off.contains(&node.id) {
+                        0
+                    } else {
+                        u32::from(profile.rank(node.id))
+                    };
+                    (working + rank, all + u32::from(node.ranks))
+                });
+            ranks.insert(branch.to_owned(), [working, all]);
+        }
+        CombatSummary {
+            v: SUMMARY_VERSION,
+            levels,
+            ranks,
+        }
     }
 
     /// Switches an allocated big node on or off; `None` for anything else.

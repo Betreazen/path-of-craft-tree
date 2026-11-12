@@ -4,6 +4,7 @@ use crate::game::{
     pct_view as view,
 };
 use horizon_client::text::Text;
+use horizon_world::nbt::{JavaString, Tag};
 use rules::{Assembler, Effects, Profile, Tree};
 use std::{
     collections::{BTreeMap, HashSet},
@@ -48,6 +49,10 @@ pub struct Entry {
     feedback_at: Instant,
     unreported_xp: f64,
     unreported_branch: String,
+    /// The combat summary other mods read may have changed: written on the next server tick.
+    summary_due: bool,
+    /// The summary last written to the player's persistent data, to skip writing the same again.
+    summary_written: Option<String>,
 }
 
 #[derive(Default)]
@@ -438,6 +443,8 @@ fn on_hello(game: &mut Game<'_>, player: u128, data: &[u8]) {
         feedback_at: Instant::now(),
         unreported_xp: 0.0,
         unreported_branch: String::new(),
+        summary_due: true,
+        summary_written: None,
     };
     server().players.insert(player, entry);
     log::info!(
@@ -466,6 +473,7 @@ fn on_allocate(game: &mut Game<'_>, player: u128, data: &[u8]) {
                     next.rank(id)
                 );
                 entry.effects = Arc::new(loaded.tree.effects(&next));
+                entry.summary_due = true;
                 entry.profile = next;
                 entry.dirty = true;
                 true
@@ -488,6 +496,7 @@ fn on_allocate(game: &mut Game<'_>, player: u128, data: &[u8]) {
 fn replace_profile(game: &mut Game<'_>, player: u128, loaded: &Loaded, next: Profile) {
     if let Some(entry) = server().players.get_mut(&player) {
         entry.effects = Arc::new(loaded.tree.effects(&next));
+        entry.summary_due = true;
         entry.profile = next.clone();
         entry.dirty = true;
     }
@@ -575,6 +584,8 @@ pub fn attach_test_player(tree: &Tree) {
         feedback_at: Instant::now(),
         unreported_xp: 0.0,
         unreported_branch: String::new(),
+        summary_due: true,
+        summary_written: None,
     };
     server().players.insert(SELFTEST_PLAYER, entry);
 }
@@ -619,6 +630,7 @@ pub fn grant(
         // The level bonus of every branch is part of the effects, so a new level of any branch refreshes them.
         if tree.levels_changed(&before, &entry.profile.xp) {
             entry.effects = Arc::new(tree.effects(&entry.profile));
+            entry.summary_due = true;
         }
         entry.dirty = true;
         if entry.unreported_branch != branch {
@@ -665,6 +677,7 @@ fn push_tree_to_players(game: &mut Game<'_>, loaded: &Loaded) {
             .map(|(player, entry)| {
                 let next = loaded.tree.sanitize(&entry.profile);
                 entry.effects = Arc::new(loaded.tree.effects(&next));
+                entry.summary_due = true;
                 entry.dirty |= next != entry.profile;
                 entry.profile = next.clone();
                 (*player, next)
@@ -678,6 +691,60 @@ fn push_tree_to_players(game: &mut Game<'_>, loaded: &Loaded) {
     }
 }
 
+/// The key of the combat summary in a player's persistent data, which mods share; SoulsCraft
+/// reads it to scale its enemies and never writes it.
+pub const SUMMARY_KEY: &str = "pct:summary";
+
+/// Writes the combat summary (`Tree::combat_summary`, JSON) of each player whose tree changed into
+/// their persistent data, beside other mods' keys. Done on the server tick: inside a player's turn
+/// only that player can be reached. A player not reached keeps it due for the next tick.
+fn write_summaries(game: &mut Game<'_>) {
+    let Some(loaded) = current_tree() else {
+        return;
+    };
+    let due: Vec<(u128, String)> = {
+        let mut state = server();
+        state
+            .players
+            .iter_mut()
+            .filter(|(player, entry)| entry.summary_due && **player != SELFTEST_PLAYER)
+            .filter_map(|(player, entry)| {
+                let summary = loaded.tree.combat_summary(&entry.profile);
+                let json = serde_json::to_string(&summary).ok()?;
+                if entry.summary_written.as_ref() == Some(&json) {
+                    entry.summary_due = false;
+                    return None;
+                }
+                Some((*player, json))
+            })
+            .collect()
+    };
+    for (player, json) in due {
+        if !put_summary(game, player, &json) {
+            continue;
+        }
+        if let Some(entry) = server().players.get_mut(&player) {
+            entry.summary_due = false;
+            entry.summary_written = Some(json);
+        }
+    }
+}
+
+/// Puts `json` under the summary key of the player's persistent data, keeping the other keys.
+fn put_summary(game: &mut Game<'_>, player: u128, json: &str) -> bool {
+    let Some(mut data) = game.native_player_persistent_data(player) else {
+        return false;
+    };
+    let Tag::Compound(map) = &mut data else {
+        return false;
+    };
+    map.insert(
+        JavaString::from(SUMMARY_KEY),
+        Tag::String(JavaString::from(json)),
+    );
+    game.native_set_player_persistent_data(player, data)
+}
+
 pub fn on_server_tick(game: &mut Game<'_>) {
     let _timer = crate::game::pct_perf::time(crate::game::pct_perf::Probe::ServerTick);
     crate::game::pct_perf::report_if_due("server");
@@ -688,6 +755,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
         state.server_ticks
     };
     crate::game::pct_actions::on_server_tick(game);
+    write_summaries(game);
     if ticks % SAVE_EVERY_TICKS == 0 {
         save_everything(game);
     }

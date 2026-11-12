@@ -318,6 +318,82 @@ mod shipped_tree {
     }
 
     #[test]
+    fn a_new_player_s_combat_summary_is_empty_with_the_branch_sizes() {
+        let tree = shipped();
+        let summary = tree.combat_summary(&tree.new_profile());
+        for branch in crate::rules::COMBAT_BRANCHES {
+            let all: u32 = tree
+                .nodes
+                .values()
+                .filter(|n| n.branch.as_deref() == Some(branch))
+                .map(|n| u32::from(n.ranks))
+                .sum();
+            assert!(all > 0, "{branch} has no nodes");
+            assert_eq!(
+                summary.levels[branch],
+                [0, tree.curve.max_level],
+                "{branch}"
+            );
+            assert_eq!(summary.ranks[branch], [0, all], "{branch}");
+        }
+        let json = serde_json::to_value(&summary).unwrap();
+        assert_eq!(json["v"], 1);
+        assert_eq!(json["levels"]["melee"][1], tree.curve.max_level);
+        assert_eq!(
+            json.as_object().unwrap().keys().collect::<Vec<_>>(),
+            ["levels", "ranks", "v"]
+        );
+    }
+
+    #[test]
+    fn the_combat_summary_counts_working_ranks_and_levels() {
+        let tree = shipped();
+        let mut profile = grown(&tree, 4000.0);
+        let learned =
+            |profile: &crate::rules::Profile, branch: &str, off: &crate::rules::Allocated| {
+                tree.nodes
+                    .values()
+                    .filter(|n| n.branch.as_deref() == Some(branch) && !off.contains(&n.id))
+                    .map(|n| u32::from(profile.rank(n.id)))
+                    .sum::<u32>()
+            };
+        let none = crate::rules::Allocated::new();
+        let summary = tree.combat_summary(&profile);
+        for branch in crate::rules::COMBAT_BRANCHES {
+            assert_eq!(
+                summary.ranks[branch][0],
+                learned(&profile, branch, &none),
+                "{branch}"
+            );
+            assert!(
+                summary.ranks[branch][0] > 0,
+                "{branch} learned nothing in the test"
+            );
+            assert_eq!(
+                summary.levels[branch][0],
+                tree.branch_level(&profile, branch)
+            );
+        }
+        // A switched-off big node takes itself and its upgrades out of the count.
+        let big = tree
+            .nodes
+            .values()
+            .find(|n| {
+                n.branch.as_deref() == Some("melee")
+                    && n.kind == Kind::Big
+                    && profile.is_learned(n.id)
+            })
+            .expect("a learned big melee node")
+            .id;
+        profile = tree.toggle(&profile, big).expect("a big node toggles");
+        let off = tree.switched_off(&profile);
+        let after = tree.combat_summary(&profile);
+        assert_eq!(after.ranks["melee"][0], learned(&profile, "melee", &off));
+        assert!(after.ranks["melee"][0] < summary.ranks["melee"][0]);
+        assert_eq!(after.ranks["melee"][1], summary.ranks["melee"][1]);
+    }
+
+    #[test]
     fn every_branch_earns_experience() {
         let tree = shipped();
         for (id, branch) in &tree.branches {

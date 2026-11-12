@@ -12,6 +12,7 @@ use crate::game::{
 };
 use crate::mod_api::NativeCommand;
 use horizon_client::text::Text;
+use horizon_world::nbt::Tag;
 use std::{
     collections::BTreeMap,
     sync::atomic::{AtomicU32, Ordering},
@@ -50,7 +51,30 @@ pub fn on_console_command(game: &mut Game<'_>, command: &str, ran: &mut bool) {
     let mut words = args.split_whitespace();
     match words.next() {
         Some("run") => run(game, words.next().unwrap_or("")),
-        _ => game.native_feedback(Text::literal(format!("usage: {COMMAND} run [filter]"))),
+        Some("summary") => show_summaries(game),
+        _ => game.native_feedback(Text::literal(format!(
+            "usage: {COMMAND} run [filter] | {COMMAND} summary"
+        ))),
+    }
+}
+
+/// Prints the combat summary each online player carries, as another mod reads it.
+fn show_summaries(game: &mut Game<'_>) {
+    let players = game.native_server_players();
+    if players.is_empty() {
+        game.native_feedback(Text::literal(format!("{COMMAND}: nobody is online")));
+    }
+    for player in players {
+        let summary = game
+            .native_player_persistent_data(player.uuid)
+            .and_then(|data| match data.get(glue::SUMMARY_KEY) {
+                Some(Tag::String(text)) => Some(text.to_string_lossy()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "(none)".to_owned());
+        let line = format!("{}: {} {summary}", player.name, glue::SUMMARY_KEY);
+        log::info!("path_of_craft_tree: {line}");
+        game.native_feedback(Text::literal(line));
     }
 }
 
