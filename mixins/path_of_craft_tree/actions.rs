@@ -786,6 +786,61 @@ pub fn save_chunks(game: &Game<'_>, player: u128) {
     }
 }
 
+/// What `measure_visits` found for one player's visited chunks.
+pub struct VisitsMeasure {
+    pub chunks: usize,
+    pub file_bytes: u64,
+    pub save: Duration,
+    pub load: Duration,
+}
+
+/// Self-test only (`pct_selftest visits`): grows an online player's visited chunks by `extra`
+/// made-up chunks far out of the world's used area, then times saving the set and reading it back
+/// as a login does. For sizing the store on a busy server; the bot's files are deleted afterwards.
+pub fn measure_visits(
+    game: &Game<'_>,
+    player: u128,
+    extra: usize,
+) -> Result<VisitsMeasure, String> {
+    const FAR: i32 = 1_000_000;
+    const ROW: usize = 4096;
+    {
+        let mut state = state();
+        let visited = state
+            .visited
+            .get_mut(&player)
+            .ok_or("that player's visited chunks are not loaded (not online?)")?;
+        let start = visited.len();
+        for i in start..start + extra {
+            let (x, z) = ((i % ROW) as i32, (i / ROW) as i32);
+            visited.insert(("minecraft:overworld".to_owned(), FAR + x, FAR + z));
+        }
+        state.dirty_chunks.insert(player);
+    }
+    let saving = Instant::now();
+    save_chunks(game, player);
+    let save = saving.elapsed();
+    let path = chunks_file(game, player).ok_or("no world folder")?;
+    let file_bytes = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
+    let kept = state().visited.remove(&player);
+    let loading = Instant::now();
+    load_visited(game, player);
+    let load = loading.elapsed();
+    let chunks = state().visited.get(&player).map_or(0, HashSet::len);
+    if chunks == 0 {
+        if let Some(kept) = kept {
+            state().visited.insert(player, kept);
+        }
+        return Err("the saved set did not read back".to_owned());
+    }
+    Ok(VisitsMeasure {
+        chunks,
+        file_bytes,
+        save,
+        load,
+    })
+}
+
 /// Self-test only: an empty set of visited chunks, as a player has when they join a new world.
 pub fn start_test_visits(player: u128) {
     state().visited.insert(player, HashSet::new());

@@ -55,10 +55,41 @@ pub fn on_console_command(game: &mut Game<'_>, command: &str, ran: &mut bool) {
     match words.next() {
         Some("run") => run(game, words.next().unwrap_or("")),
         Some("summary") => show_summaries(game),
+        Some("visits") => {
+            let name = words.next().unwrap_or("");
+            let extra = words.next().and_then(|n| n.parse().ok()).unwrap_or(0);
+            measure_visits(game, name, extra);
+        }
         _ => game.native_feedback(Text::literal(format!(
-            "usage: {COMMAND} run [filter] | {COMMAND} summary"
+            "usage: {COMMAND} run [filter] | {COMMAND} summary | {COMMAND} visits <player> <extra chunks>"
         ))),
     }
+}
+
+/// Sizes the visited-chunks store with a test bot: adds `extra` made-up chunks to an online player's
+/// set and reports the set's size, its file and the time to save and to read it back.
+fn measure_visits(game: &mut Game<'_>, name: &str, extra: usize) {
+    let player = game
+        .native_server_players()
+        .into_iter()
+        .find(|p| p.name == name)
+        .map(|p| p.uuid);
+    let line = match player {
+        None => format!("{COMMAND}: {name} is not online"),
+        Some(uuid) => match actions::measure_visits(game, uuid, extra) {
+            Ok(m) => format!(
+                "{COMMAND}: visits {name}: {} chunks, file {} bytes ({:.1} per chunk), save {:.1} ms, load {:.1} ms",
+                m.chunks,
+                m.file_bytes,
+                m.file_bytes as f64 / m.chunks.max(1) as f64,
+                m.save.as_secs_f64() * 1000.0,
+                m.load.as_secs_f64() * 1000.0
+            ),
+            Err(why) => format!("{COMMAND}: visits {name}: {why}"),
+        },
+    };
+    log::info!("path_of_craft_tree: {line}");
+    game.native_feedback(Text::literal(line));
 }
 
 /// Prints the combat summary each online player carries, as another mod reads it.
