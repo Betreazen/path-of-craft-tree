@@ -257,7 +257,7 @@ pub fn on_machine_kill(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str
     } else {
         1.0
     };
-    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(entity);
+    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(game, entity);
     let times = health * boss * factor * tree.machine_share;
     earn(game, tree, owner, "act:shot", times, None);
 }
@@ -277,7 +277,7 @@ pub fn on_machine_slaughter(game: &mut Game<'_>, owner: u128, entity: u32, kind:
     let health = tree
         .number("mob_health", kind)
         .unwrap_or(DEFAULT_MOB_HEALTH);
-    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(entity);
+    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(game, entity);
     let amount = health * factor * tree.machine_share;
     let change = |tree: &Tree, profile: &mut Profile| {
         tree.add_cross_xp(profile, "husbandry", amount);
@@ -591,10 +591,10 @@ pub fn on_mob_killed(game: &mut Game<'_>, player: u128, entity: u32, kind: &str)
     } else {
         "act:kill"
     };
+    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(game, entity);
     let cross = tree
         .in_list("animals", kind)
-        .then_some(("husbandry", health));
-    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(entity);
+        .then_some(("husbandry", health * factor));
     earn(game, tree, player, action, health * factor, cross);
 }
 
@@ -637,7 +637,7 @@ fn earn_mob_shot(game: &mut Game<'_>, player: u128, entity: u32, kind: &str) {
     } else {
         1.0
     };
-    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(entity);
+    let factor = crate::game::pct_fx_roam_combat::kill_xp_factor(game, entity);
     earn(game, tree, player, "act:shot", health * boss * factor, None);
 }
 

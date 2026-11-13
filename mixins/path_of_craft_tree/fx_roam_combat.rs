@@ -649,13 +649,22 @@ pub fn mark_spawner_mobs(ids: &HashMap<u32, u32>) {
     state.spawner_mobs.extend(ids.values().copied());
 }
 
-/// What share of a kill's experience this mob pays.
-pub fn kill_xp_factor(entity: u32) -> f64 {
-    if state().spawner_mobs.contains(&entity) {
+/// What share of a kill's experience this mob pays: a cut for mobs from spawners, times what its
+/// `pct.xpNNN` tag asks for (a mob another mod made stronger). A dying mob keeps its tags until it
+/// is removed, so every kill hook and a machine's report in the same tick still read them.
+pub fn kill_xp_factor(game: &Game<'_>, entity: u32) -> f64 {
+    let spawner = if state().spawner_mobs.contains(&entity) {
         rules::SPAWNER_XP_SHARE
     } else {
         1.0
-    }
+    };
+    let tagged = game
+        .native_entity(entity)
+        .and_then(|mob| game.native_entity_tags(mob))
+        .map_or(1.0, |tags| {
+            rules::tagged_xp_multiplier(tags.iter().map(String::as_str))
+        });
+    spawner * tagged
 }
 
 pub fn note_far_shot(mob: u32, shooter: u128) {
@@ -691,6 +700,6 @@ pub fn on_kill_loot(game: &mut Game<'_>, context: &NativeLootDrops<'_>) {
     } else {
         1.0
     };
-    let bonus = health * boss * rules::FAR_SHOT_BONUS * kill_xp_factor(entity);
+    let bonus = health * boss * rules::FAR_SHOT_BONUS * kill_xp_factor(game, entity);
     actions::earn_once(game, shooter, "act:shot", bonus);
 }

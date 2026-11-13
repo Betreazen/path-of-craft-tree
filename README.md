@@ -97,8 +97,8 @@ horizon-launcher native-build --trust-native-code
 ```powershell
 git clone https://github.com/Betreazen/path-of-craft-tree
 horizon-launcher native-build path-of-craft-tree/mixins/path_of_craft_tree `
-    --server-output C:\horizon-engines\pct-0.4.5 --version <версия Horizon> --trust-native-code
-horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.5\horizon-engine.exe
+    --server-output C:\horizon-engines\pct-0.4.6 --version <версия Horizon> --trust-native-code
+horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.6\horizon-engine.exe
 horizon-server --dir <папка сервера> restart
 ```
 
@@ -120,7 +120,7 @@ horizon-server --dir <папка сервера> restart
 
 Механизмы вашего мода могут приносить опыт своему владельцу. Достаточно выполнять консольную команду `pct-machine` из кода сервера. Без Path-of-craft-tree она тихо ничего не делает, так что при сборке моды друг от друга не зависят. Форматы отчётов, правила и проверка из консоли описаны в [docs/machine-reports.md](docs/machine-reports.md).
 
-Боевую силу игрока из дерева можно прочитать: PCT кладёт на каждого игрока сводку `pct:summary` (уровни и изученные ранги Воина, Стрелка и Стража с их пределами) в общий набор данных игрока. Так SoulsCraft подстраивает силу мобов. Формат и правила чтения — в [docs/combat-summary.md](docs/combat-summary.md).
+Боевую силу игрока из дерева можно прочитать: PCT кладёт на каждого игрока сводку `pct:summary` (уровни и изученные ранги Воина, Стрелка и Стража с их пределами) в общий набор данных игрока. Так SoulsCraft подстраивает силу мобов. А моб, которого другой мод сделал сильнее, может нести метку `pct.xp145`: за его убийство PCT даст 145% опыта. Форматы и правила — в [docs/combat-summary.md](docs/combat-summary.md).
 
 ## Разработка
 

@@ -215,10 +215,50 @@ pub fn direction_name(dx: f64, dz: f64) -> &'static str {
     NAMES[((degrees + 22.5) / 45.0) as usize % NAMES.len()]
 }
 
+/// The entity tag another mod (SoulsCraft) puts on a mob it made stronger: `pct.xp145` pays 145% of
+/// the usual kill experience. Any mod may set it; the contract is in docs/combat-summary.md.
+pub const XP_TAG_PREFIX: &str = "pct.xp";
+/// The highest percent such a tag may ask for; larger or malformed ones are ignored.
+pub const XP_TAG_MAX_PERCENT: u32 = 500;
+
+/// The kill experience multiplier the mob's tags ask for: the largest valid `pct.xpNNN`, else 1.
+pub fn tagged_xp_multiplier<'a>(tags: impl IntoIterator<Item = &'a str>) -> f64 {
+    tags.into_iter()
+        .filter_map(|tag| tag.strip_prefix(XP_TAG_PREFIX)?.parse::<u32>().ok())
+        .filter(|percent| (1..=XP_TAG_MAX_PERCENT).contains(percent))
+        .max()
+        .map_or(1.0, |percent| f64::from(percent) / 100.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn a_pct_xp_tag_scales_kill_experience() {
+        assert_eq!(tagged_xp_multiplier([]), 1.0);
+        assert_eq!(tagged_xp_multiplier(["soulscraft.revenant"]), 1.0);
+        assert_eq!(tagged_xp_multiplier(["pct.xp145"]), 1.45);
+        assert_eq!(tagged_xp_multiplier(["pct.xp80"]), 0.8);
+        assert_eq!(tagged_xp_multiplier(["pct.xp120", "pct.xp145"]), 1.45);
+        assert_eq!(tagged_xp_multiplier(["pct.xp500"]), 5.0);
+    }
+
+    #[test]
+    fn malformed_or_too_large_xp_tags_are_ignored() {
+        for tag in [
+            "pct.xp0",
+            "pct.xp501",
+            "pct.xp-5",
+            "pct.xp1.5",
+            "pct.xp",
+            "pct.xpabc",
+        ] {
+            assert_eq!(tagged_xp_multiplier([tag]), 1.0, "{tag}");
+        }
+        assert_eq!(tagged_xp_multiplier(["pct.xp9999", "pct.xp130"]), 1.3);
+    }
 
     fn nodes(pairs: &[(&str, f64)]) -> impl Fn(&str) -> f64 {
         let map: HashMap<String, f64> = pairs.iter().map(|(k, v)| ((*k).to_owned(), *v)).collect();
