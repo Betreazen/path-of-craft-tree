@@ -1348,7 +1348,15 @@ fn numbers() -> Value {
         Value::Object(
             entries
                 .iter()
-                .map(|(id, value)| (format!("minecraft:{id}"), json!(value)))
+                .map(|(id, value)| {
+                    // A bare id is vanilla's; another mod's keeps its own namespace.
+                    let id = if id.contains(':') {
+                        (*id).to_owned()
+                    } else {
+                        format!("minecraft:{id}")
+                    };
+                    (id, json!(value))
+                })
                 .collect(),
         )
     };
@@ -1364,6 +1372,11 @@ fn numbers() -> Value {
             ("silverfish", 8.0), ("endermite", 8.0), ("breeze", 30.0), ("ender_dragon", 200.0), ("wither", 300.0),
             ("warden", 500.0), ("cow", 10.0), ("pig", 10.0), ("sheep", 8.0), ("chicken", 4.0), ("rabbit", 3.0),
             ("horse", 20.0), ("goat", 10.0), ("fox", 10.0), ("wolf", 8.0), ("cat", 10.0), ("llama", 20.0),
+            // SoulsCraft's mobs, from its data/mobs.json stats.health (agreed 2026-11-13; SoulsCraft
+            // sends new numbers when they change). The bog slime's size is folded into its pct.xp tag.
+            ("soulscraft:revenant", 30.0), ("soulscraft:stalker", 22.0), ("soulscraft:marksman", 20.0),
+            ("soulscraft:brute", 60.0), ("soulscraft:shrike", 14.0), ("soulscraft:lurker", 30.0),
+            ("soulscraft:bog_slime", 16.0),
         ]),
     })
 }

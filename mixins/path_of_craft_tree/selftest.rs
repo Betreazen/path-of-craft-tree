@@ -123,6 +123,8 @@ const TAGGED_MOB_POS: [f64; 3] = [8.5, 101.0, -8.5];
 const TAGGED_MOB_KIND: &str = "minecraft:cow";
 const TAGGED_MOB_TAG: &str = "pct.xp145";
 const TAGGED_MULTIPLIER: f64 = 1.45;
+/// A SoulsCraft brute's health as SoulsCraft states it (data/mobs.json); the tree must agree.
+const SOULSCRAFT_BRUTE_HEALTH: f64 = 60.0;
 
 /// A cow carrying `pct.xp145`, as SoulsCraft tags the mobs it makes stronger: its id, or None when
 /// the game refused the summon.
@@ -443,6 +445,12 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
             name: "turret_kill_pays_the_archer",
             reports: vec![format!("kill {owner} {} minecraft:zombie", entity(0))],
             expected: one("act:shot", health(tree, "minecraft:zombie")),
+        },
+        Scenario {
+            // SoulsCraft's mobs are in the health table (agreed 2026-11-13): a brute is worth 60.
+            name: "a_soulscraft_brute_pays_its_own_health",
+            reports: vec![format!("kill {owner} {} soulscraft:brute", entity(5))],
+            expected: one("act:shot", SOULSCRAFT_BRUTE_HEALTH),
         },
         Scenario {
             name: "player_shot_pays_in_full",
