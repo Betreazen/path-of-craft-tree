@@ -97,8 +97,8 @@ horizon-launcher native-build --trust-native-code
 ```powershell
 git clone https://github.com/Betreazen/path-of-craft-tree
 horizon-launcher native-build path-of-craft-tree/mixins/path_of_craft_tree `
-    --server-output C:\horizon-engines\pct-0.4.6 --version <версия Horizon> --trust-native-code
-horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.6\horizon-engine.exe
+    --server-output C:\horizon-engines\pct-0.4.7 --version <версия Horizon> --trust-native-code
+horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.4.7\horizon-engine.exe
 horizon-server --dir <папка сервера> restart
 ```
 
@@ -153,7 +153,7 @@ cargo clippy --all-targets -- -D warnings -A dead_code
 
 ### Самотест на сервере
 
-Консольная команда сервера `pct_selftest run [фильтр]` за доли секунды проверяет контракт с модами машин, без клиента и ботов. Она отправляет каждый вид отчёта `pct-machine` тем же путём, что RustCraft, и начисляет опыт временному владельцу, который существует только на время команды и никуда не сохраняется. Потом сверяет прирост опыта по веткам с данными дерева. Результат пишется в `selftest/path_of_craft_tree.json` в папке сервера. Эту команду запускает общий стенд модов (`horizon-joint-dev`, `.\joint.ps1 check`).
+Консольная команда сервера `pct_selftest run [фильтр]` за доли секунды проверяет контракт с модами машин, без клиента и ботов. Она отправляет каждый вид отчёта `pct-machine` тем же путём, что RustCraft, и начисляет опыт временному владельцу, который существует только на время команды и никуда не сохраняется. Потом сверяет прирост опыта по веткам с данными дерева. Результат пишется в `selftest/path_of_craft_tree.json` в папке сервера. Ещё два сценария проверяют метку `pct.xpNNN` от SoulsCraft на настоящем мобе. Самотест держит загруженным чанк у точки появления мира, призывает корову с `pct.xp145`, засчитывает её отчётами `kill` и `slaughter`, ждёт ×1,45 и убирает корову. Эта часть заканчивается на тиках сервера, поэтому сначала результат пишется с `"done": false`. Всего 24 сценария. Эту команду запускает общий стенд модов (`horizon-joint-dev`, `.\joint.ps1 check`).
 
 `pct_selftest summary` печатает боевую сводку каждого игрока на сервере.
 

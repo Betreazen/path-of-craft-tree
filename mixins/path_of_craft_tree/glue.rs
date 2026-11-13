@@ -755,6 +755,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
         state.server_ticks
     };
     crate::game::pct_actions::on_server_tick(game);
+    crate::game::pct_selftest::on_server_tick(game);
     write_summaries(game);
     if ticks % SAVE_EVERY_TICKS == 0 {
         save_everything(game);

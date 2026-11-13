@@ -12,10 +12,13 @@ use crate::game::{
 };
 use crate::mod_api::NativeCommand;
 use horizon_client::text::Text;
-use horizon_world::nbt::Tag;
+use horizon_world::nbt::{JavaString, Tag};
 use std::{
     collections::BTreeMap,
-    sync::atomic::{AtomicU32, Ordering},
+    sync::{
+        Mutex,
+        atomic::{AtomicU32, Ordering},
+    },
 };
 
 /// The console command the joint bench runs (`selftest` in its mods.json).
@@ -78,6 +81,64 @@ fn show_summaries(game: &mut Game<'_>) {
     }
 }
 
+/// The scenarios that need the tagged test mob.
+const TAGGED_SCENARIOS: [&str; 2] = [
+    "a_pct_xp_tag_scales_a_turret_kill",
+    "a_pct_xp_tag_scales_a_slaughter",
+];
+/// Where the tagged test mob stands: in the mod's part of the bench world, by the world spawn; the
+/// run holds its chunk loaded while it needs it. It floats without AI and is removed after the run.
+const TAGGED_MOB_POS: [f64; 3] = [8.5, 101.0, -8.5];
+const TAGGED_MOB_KIND: &str = "minecraft:cow";
+const TAGGED_MOB_TAG: &str = "pct.xp145";
+const TAGGED_MULTIPLIER: f64 = 1.45;
+
+/// A cow carrying `pct.xp145`, as SoulsCraft tags the mobs it makes stronger: its id, or None when
+/// the game refused the summon.
+fn summon_tagged_mob(game: &mut Game<'_>) -> Option<u32> {
+    let nbt = Tag::compound([
+        ("NoAI", Tag::Byte(1)),
+        ("NoGravity", Tag::Byte(1)),
+        ("Silent", Tag::Byte(1)),
+        ("Invulnerable", Tag::Byte(1)),
+        ("PersistenceRequired", Tag::Byte(1)),
+        (
+            "Tags",
+            Tag::List(vec![Tag::String(JavaString::from(TAGGED_MOB_TAG))]),
+        ),
+    ]);
+    let Tag::Compound(nbt) = nbt else {
+        return None;
+    };
+    game.native_summon(DIMENSION, TAGGED_MOB_KIND, TAGGED_MOB_POS, nbt)
+}
+
+/// The kills of the tagged mob, reported by machines: a turret's (as a zombie's worth, the report
+/// names the kind) and a slaughterer's (as the cow it is), each at 145%.
+fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
+    let owner = format!("{:032x}", glue::SELFTEST_PLAYER);
+    let share = tree.machine_share;
+    let (archery, shot) = base(tree, "act:shot");
+    vec![
+        Scenario {
+            name: TAGGED_SCENARIOS[0],
+            reports: vec![format!("kill {owner} {mob} minecraft:zombie")],
+            expected: gains([(
+                archery,
+                shot * health(tree, "minecraft:zombie") * share * TAGGED_MULTIPLIER,
+            )]),
+        },
+        Scenario {
+            name: TAGGED_SCENARIOS[1],
+            reports: vec![format!("slaughter {owner} {mob} {TAGGED_MOB_KIND}")],
+            expected: gains([(
+                "husbandry".to_owned(),
+                health(tree, TAGGED_MOB_KIND) * share * tree.cross_share * TAGGED_MULTIPLIER,
+            )]),
+        },
+    ]
+}
+
 /// One check: the reports to send and the experience each branch should gain from them.
 struct Scenario {
     name: &'static str,
@@ -92,27 +153,127 @@ fn run(game: &mut Game<'_>, filter: &str) {
     };
     let tree = &loaded.tree;
     let run_no = RUNS.fetch_add(1, Ordering::Relaxed);
-    let mut passed = Vec::new();
-    let mut failed = Vec::new();
+    let mut outcome = Outcome::default();
     for scenario in scenarios(tree, run_no)
         .into_iter()
         .filter(|s| s.name.contains(filter))
     {
-        match check(game, tree, &scenario) {
-            Ok(()) => passed.push(scenario.name),
-            Err(why) => failed.push(serde_json::json!({ "name": scenario.name, "why": why })),
-        }
+        outcome.record(scenario.name, check(game, tree, &scenario));
     }
     glue::detach_test_player();
     actions::forget_player(glue::SELFTEST_PLAYER);
+    if TAGGED_SCENARIOS.iter().any(|name| name.contains(filter)) {
+        // SoulsCraft's contract needs a real mob, and a fresh world with nobody on has no chunk
+        // loaded: hold one and finish on the server ticks once it is in (`on_server_tick`).
+        game.native_force_chunk(CHUNK_OWNER, tagged_chunk(), true);
+        let line = format!("{COMMAND}: waiting for a loaded chunk for the tagged-mob scenarios");
+        let _ = write_result(game, &outcome.json(false));
+        *pending() = Some(Pending {
+            outcome,
+            filter: filter.to_owned(),
+            ticks: 0,
+        });
+        game.native_feedback(Text::literal(line));
+        return;
+    }
+    finish(game, outcome);
+}
+
+/// The scenarios' results so far.
+#[derive(Default)]
+struct Outcome {
+    passed: Vec<&'static str>,
+    failed: Vec<serde_json::Value>,
+}
+
+impl Outcome {
+    fn record(&mut self, name: &'static str, result: Result<(), String>) {
+        match result {
+            Ok(()) => self.passed.push(name),
+            Err(why) => self
+                .failed
+                .push(serde_json::json!({ "name": name, "why": why })),
+        }
+    }
+
+    fn json(&self, done: bool) -> serde_json::Value {
+        serde_json::json!({ "mod": MOD_ID, "done": done, "passed": self.passed, "failed": self.failed })
+    }
+}
+
+/// A run waiting on the server ticks for the tagged mob's chunk.
+struct Pending {
+    outcome: Outcome,
+    filter: String,
+    ticks: u32,
+}
+
+/// Who holds the test chunk (`native_force_chunk`).
+const CHUNK_OWNER: &str = "path_of_craft_tree:selftest";
+/// How long a run waits for the chunk; the bench sprints ticks, so this is a fraction of a second.
+const MAX_WAIT_TICKS: u32 = 600;
+
+static PENDING: Mutex<Option<Pending>> = Mutex::new(None);
+
+fn pending() -> std::sync::MutexGuard<'static, Option<Pending>> {
+    PENDING
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+fn tagged_chunk() -> [i32; 2] {
+    [
+        (TAGGED_MOB_POS[0].floor() as i32) >> 4,
+        (TAGGED_MOB_POS[2].floor() as i32) >> 4,
+    ]
+}
+
+/// Server tick: a waiting run tries for its tagged mob, and finishes once it has it or gives up.
+pub fn on_server_tick(game: &mut Game<'_>) {
+    let Some(mut run) = pending().take() else {
+        return;
+    };
+    let Some(loaded) = glue::current_tree() else {
+        return;
+    };
+    let tree = &loaded.tree;
+    match summon_tagged_mob(game) {
+        Some(mob) => {
+            for scenario in tagged_scenarios(tree, mob)
+                .into_iter()
+                .filter(|s| s.name.contains(run.filter.as_str()))
+            {
+                let result = check(game, tree, &scenario);
+                run.outcome.record(scenario.name, result);
+            }
+            game.native_remove_mob(DIMENSION, mob);
+            glue::detach_test_player();
+            actions::forget_player(glue::SELFTEST_PLAYER);
+        }
+        None if run.ticks < MAX_WAIT_TICKS => {
+            run.ticks += 1;
+            *pending() = Some(run);
+            return;
+        }
+        None => {
+            let why = format!(
+                "no test mob: the chunk at {TAGGED_MOB_POS:?} did not load in {MAX_WAIT_TICKS} ticks"
+            );
+            run.outcome.record(TAGGED_SCENARIOS[0], Err(why));
+        }
+    }
+    game.native_force_chunk(CHUNK_OWNER, tagged_chunk(), false);
+    finish(game, run.outcome);
+}
+
+/// Writes the final result and answers on the console.
+fn finish(game: &mut Game<'_>, outcome: Outcome) {
     let summary = format!(
         "{COMMAND}: {} passed, {} failed",
-        passed.len(),
-        failed.len()
+        outcome.passed.len(),
+        outcome.failed.len()
     );
-    let result =
-        serde_json::json!({ "mod": MOD_ID, "done": true, "passed": passed, "failed": failed });
-    let line = match write_result(game, &result) {
+    let line = match write_result(game, &outcome.json(true)) {
         Ok(path) => format!("{summary}; {path}"),
         Err(error) => format!("{summary}; result not written: {error}"),
     };
