@@ -6,6 +6,7 @@ use crate::game::{
     pct_machine_rules::Work,
     pct_mining::player_effects,
     pct_rules::{Profile, Tree},
+    pct_visits::Visits,
 };
 use horizon_client::items::ItemStack;
 use std::{
@@ -61,8 +62,7 @@ struct State {
     built: HashMap<(String, [i32; 3]), Instant>,
     ripe: HashSet<(String, [i32; 3])>,
     current_chunk: HashMap<u128, Chunk>,
-    visited: HashMap<u128, HashSet<Chunk>>,
-    dirty_chunks: HashSet<u128>,
+    visited: HashMap<u128, Visits>,
     game_modes: HashMap<u128, i32>,
 }
 
@@ -351,17 +351,10 @@ pub fn on_machine_build(
 /// A machine entered a chunk. It counts against the owner's own visited chunks both ways, and
 /// only while they are online, as their visited chunks are loaded then.
 pub fn on_machine_chunk(game: &mut Game<'_>, owner: u128, dimension: &str, x: i32, z: i32) {
-    let is_new = {
-        let mut state = state();
-        let Some(visited) = state.visited.get_mut(&owner) else {
-            return;
-        };
-        let is_new = visited.insert((dimension.to_owned(), x, z));
-        if is_new {
-            state.dirty_chunks.insert(owner);
-        }
-        is_new
-    };
+    let is_new = state()
+        .visited
+        .get_mut(&owner)
+        .is_some_and(|visited| visited.insert(dimension, x, z));
     if is_new {
         earn_for_owner(game, owner, "act:chunk", 1.0);
     }
@@ -747,11 +740,12 @@ pub fn take_ripe(tree: &Tree, table: &str, dimension: &str, pos: [i32; 3]) -> bo
 
 // Exploration.
 
-fn chunks_file(game: &Game<'_>, player: u128) -> Option<PathBuf> {
+/// A player's visited chunks (visits.rs format), and their old JSON save from before 0.4.8.
+fn chunks_file(game: &Game<'_>, player: u128, extension: &str) -> Option<PathBuf> {
     Some(
         glue::mod_dir(game)?
             .join("chunks")
-            .join(format!("{player:032x}.json")),
+            .join(format!("{player:032x}.{extension}")),
     )
 }
 
@@ -759,31 +753,67 @@ fn load_visited(game: &Game<'_>, player: u128) {
     if state().visited.contains_key(&player) {
         return;
     }
-    let chunks: HashSet<Chunk> = chunks_file(game, player)
+    let visits = read_visits(game, player);
+    state().visited.entry(player).or_insert(visits);
+}
+
+/// The saved chunks; an old JSON save comes over whole and is rewritten at the next save. A file
+/// that can't be read is set aside as `.bad`, so the next save starts a good one.
+fn read_visits(game: &Game<'_>, player: u128) -> Visits {
+    if let Some(path) = chunks_file(game, player, "bin")
+        && let Ok(bytes) = std::fs::read(&path)
+    {
+        match Visits::decode(&bytes) {
+            Ok(visits) => return visits,
+            Err(error) => {
+                log::warn!(
+                    "path_of_craft_tree: visited chunks of {player:032x} set aside: {error}"
+                );
+                let _ = std::fs::rename(&path, path.with_extension("bad"));
+            }
+        }
+    }
+    let legacy: Vec<Chunk> = chunks_file(game, player, "json")
         .and_then(|path| std::fs::read(path).ok())
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
         .unwrap_or_default();
-    state().visited.entry(player).or_insert(chunks);
+    Visits::from_legacy(legacy)
 }
 
+/// Appends the chunks found since the last save; nothing when there are none. Chunks that fail
+/// to write stay unsaved for the next try.
 pub fn save_chunks(game: &Game<'_>, player: u128) {
-    let snapshot = {
-        let mut state = state();
-        if !state.dirty_chunks.remove(&player) {
-            return;
-        }
-        state.visited.get(&player).cloned()
-    };
-    let (Some(chunks), Some(path)) = (snapshot, chunks_file(game, player)) else {
+    let Some(path) = chunks_file(game, player, "bin") else {
         return;
     };
-    let result = serde_json::to_vec(&chunks)
-        .map_err(|e| e.to_string())
-        .and_then(|json| glue::write_in_folder(&path, &json));
-    if let Err(error) = result {
+    let new_file = !path.exists();
+    let bytes = match state().visited.get(&player) {
+        Some(visits) if visits.has_unsaved() => visits.unsaved_bytes(new_file),
+        _ => return,
+    };
+    if let Err(error) = append(&path, &bytes) {
         log::warn!("path_of_craft_tree: visited chunks not saved: {error}");
-        state().dirty_chunks.insert(player);
+        return;
     }
+    if let Some(visits) = state().visited.get_mut(&player) {
+        visits.mark_saved();
+    }
+    if let Some(old) = chunks_file(game, player, "json").filter(|old| old.exists()) {
+        let _ = std::fs::remove_file(old);
+    }
+}
+
+fn append(path: &std::path::Path, bytes: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .and_then(|mut file| file.write_all(bytes))
+        .map_err(|e| e.to_string())
 }
 
 /// What `measure_visits` found for one player's visited chunks.
@@ -813,20 +843,19 @@ pub fn measure_visits(
         let start = visited.len();
         for i in start..start + extra {
             let (x, z) = ((i % ROW) as i32, (i / ROW) as i32);
-            visited.insert(("minecraft:overworld".to_owned(), FAR + x, FAR + z));
+            visited.insert("minecraft:overworld", FAR + x, FAR + z);
         }
-        state.dirty_chunks.insert(player);
     }
     let saving = Instant::now();
     save_chunks(game, player);
     let save = saving.elapsed();
-    let path = chunks_file(game, player).ok_or("no world folder")?;
+    let path = chunks_file(game, player, "bin").ok_or("no world folder")?;
     let file_bytes = std::fs::metadata(&path).map_err(|e| e.to_string())?.len();
     let kept = state().visited.remove(&player);
     let loading = Instant::now();
     load_visited(game, player);
     let load = loading.elapsed();
-    let chunks = state().visited.get(&player).map_or(0, HashSet::len);
+    let chunks = state().visited.get(&player).map_or(0, Visits::len);
     if chunks == 0 {
         if let Some(kept) = kept {
             state().visited.insert(player, kept);
@@ -843,14 +872,13 @@ pub fn measure_visits(
 
 /// Self-test only: an empty set of visited chunks, as a player has when they join a new world.
 pub fn start_test_visits(player: u128) {
-    state().visited.insert(player, HashSet::new());
+    state().visited.insert(player, Visits::default());
 }
 
 pub fn forget_player(player: u128) {
     let mut state = state();
     state.visited.remove(&player);
     state.current_chunk.remove(&player);
-    state.dirty_chunks.remove(&player);
     state.fishing.remove(&player);
     state.hit_budget.remove(&player);
     state.game_modes.remove(&player);
@@ -862,14 +890,12 @@ fn enter_chunk(player: u128, chunk: &Chunk) -> Option<bool> {
         return None;
     }
     state.current_chunk.insert(player, chunk.clone());
+    let (dimension, x, z) = chunk;
     let is_new = state
         .visited
         .entry(player)
         .or_default()
-        .insert(chunk.clone());
-    if is_new {
-        state.dirty_chunks.insert(player);
-    }
+        .insert(dimension, *x, *z);
     Some(is_new)
 }
 

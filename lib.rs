@@ -17,6 +17,8 @@ pub mod machine_rules;
 pub mod placed;
 #[path = "mixins/path_of_craft_tree/rules.rs"]
 pub mod rules;
+#[path = "mixins/path_of_craft_tree/visits.rs"]
+pub mod visits;
 #[path = "mixins/path_of_craft_tree/view.rs"]
 pub mod view;
 
