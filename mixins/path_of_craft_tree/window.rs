@@ -3,6 +3,7 @@
 // the switch of the experience bar on the screen. ui.rs draws the tree and asks here first;
 // window_draw.rs draws these tools. The state lives here, apart from the shared client state:
 // this module never holds its own lock while it takes glue's, nor the other way round.
+use crate::game::pct_window_draw::{Panel, PlanView};
 use crate::game::{
     Game,
     native_hooks::NativeScreenView,
@@ -14,7 +15,7 @@ use crate::game::{
 use find::{Found, Index};
 use horizon_client::clipboard::Clipboard as _;
 use look::{Look, Shown};
-use plan::{Cost, Plan};
+use plan::Plan;
 use rules::{Profile, Tree};
 use session::Session;
 use std::collections::VecDeque;
@@ -76,50 +77,6 @@ pub enum Button {
     Close,
 }
 
-/// What the planner shows for one plan, profile and tree.
-#[derive(Clone)]
-pub struct PlanView {
-    /// Planned ranks by node id.
-    planned: Vec<u8>,
-    /// Each planned node once, in plan order.
-    pub ids: Vec<u16>,
-    /// The path: each newly planned node and the neighbour it is reached through.
-    pub parents: Vec<(u16, u16)>,
-    pub cost: Cost,
-    pub steps: usize,
-}
-
-impl PlanView {
-    fn new(tree: &Tree, profile: &Profile, plan: &Plan) -> PlanView {
-        let size = tree
-            .nodes
-            .keys()
-            .last()
-            .map_or(0, |id| usize::from(*id) + 1);
-        let mut planned = vec![0u8; size];
-        let mut ids = Vec::new();
-        for &id in plan.steps() {
-            if let Some(slot) = planned.get_mut(usize::from(id)) {
-                if *slot == 0 {
-                    ids.push(id);
-                }
-                *slot = slot.saturating_add(1);
-            }
-        }
-        PlanView {
-            planned,
-            ids,
-            parents: plan.parents(tree, profile),
-            cost: plan.cost(tree, profile),
-            steps: plan.steps().len(),
-        }
-    }
-
-    pub fn planned(&self, id: u16) -> u8 {
-        self.planned.get(usize::from(id)).copied().unwrap_or(0)
-    }
-}
-
 #[derive(Default)]
 struct FoundFor {
     tree: Option<Arc<Tree>>,
@@ -127,28 +84,6 @@ struct FoundFor {
     query: String,
     only_available: bool,
     found: Arc<Found>,
-}
-
-/// A panel's lines, laid out once and kept while nothing they show changes.
-#[derive(Debug, Clone, Default)]
-pub struct Panel {
-    pub lines: Vec<Line>,
-    /// The widest line, in GUI pixels.
-    pub width: f32,
-}
-
-/// A line of a panel: texts at offsets from the panel's left, each with its colour.
-#[derive(Debug, Clone, Default)]
-pub struct Line {
-    pub cells: Vec<(String, f32, u32)>,
-}
-
-impl Line {
-    pub fn text(text: impl Into<String>, colour: u32) -> Line {
-        Line {
-            cells: vec![(text.into(), 0.0, colour)],
-        }
-    }
 }
 
 pub struct Window {
@@ -175,6 +110,9 @@ pub struct Window {
     pub started: Instant,
     pub bar: bool,
     settings_read: bool,
+    /// Whether the window was open at the last frame: the key that opens it also types its
+    /// letter, which must not land in the search box.
+    open_last_frame: bool,
     /// Laid-out panels: the planner's for a plan view, the statistics for what they show.
     pub plan_lines: Option<(Arc<PlanView>, Arc<Panel>)>,
     pub stats_lines: Option<((u64, u64, bool), Arc<Panel>)>,
@@ -206,6 +144,7 @@ impl Default for Window {
             started: Instant::now(),
             bar: false,
             settings_read: false,
+            open_last_frame: false,
             plan_lines: None,
             stats_lines: None,
             hits: Vec::new(),
@@ -272,18 +211,16 @@ impl Window {
             return self.found.found.clone();
         }
         let query = if plan::looks_like_share(&self.query) {
-            ""
+            String::new()
         } else {
-            self.query.as_str()
+            self.query.clone()
         };
         // The index is built on the first search, not when the window opens.
-        let found = if find::fold(query).is_empty() && !self.only_available {
+        let found = if find::fold(&query).is_empty() && !self.only_available {
             Arc::new(Found::default())
         } else {
-            Arc::new(
-                self.index_for(tree, look)
-                    .find(query, self.only_available, shown),
-            )
+            let index = self.index_for(tree, look);
+            Arc::new(index.find(&query, self.only_available, shown))
         };
         self.found = FoundFor {
             tree: Some(tree.clone()),
@@ -308,11 +245,9 @@ impl Window {
                 return view.clone();
             }
             // Experience moved and no rank: the path stands, only the points changed.
-            if p.ranks == profile.ranks {
-                let view = Arc::new(PlanView {
-                    cost: self.plan.cost(tree, profile),
-                    ..PlanView::clone(view)
-                });
+            // The empty profile a connection starts with is not the player's: the plan waits.
+            if p.ranks == profile.ranks || profile.ranks.is_empty() {
+                let view = Arc::new(view.with_cost(self.plan.cost(tree, profile)));
                 self.plan_view = Some((
                     tree.clone(),
                     profile.clone(),
@@ -322,7 +257,11 @@ impl Window {
                 return view;
             }
         }
-        let fitted = self.plan.refit(tree, profile);
+        let fitted = if profile.ranks.is_empty() {
+            self.plan.clone()
+        } else {
+            self.plan.refit(tree, profile)
+        };
         if fitted != self.plan {
             self.plan = fitted;
             self.plan_revision += 1;
@@ -466,6 +405,9 @@ pub fn on_char(game: &Game<'_>, screen: &NativeScreenView<'_>, c: char, canceled
     }
     *canceled = true;
     let mut state = window();
+    if !state.open_last_frame {
+        return;
+    }
     let limit = if plan::looks_like_share(&state.query) {
         plan::MAX_SHARE_LEN
     } else {
@@ -506,7 +448,8 @@ fn jump(step: isize) {
 
 /// `native_key` outside the window: the experience bar's key.
 pub fn on_game_key(game: &Game<'_>, key: &str, pressed: bool) {
-    if pressed && keys::is(game, key, keys::Key::XpBar) {
+    // An unbound key reads as "unknown", and so may a key the game has no name for.
+    if pressed && key != "key.keyboard.unknown" && keys::is(game, key, keys::Key::XpBar) {
         let mut state = window();
         let on = !state.bar;
         state.set_bar(on);
@@ -670,6 +613,13 @@ fn import(text: &str) {
         return;
     };
     let mut state = window();
+    if profile.ranks.is_empty() {
+        state.say(
+            "Профиль ещё не пришёл с сервера, попробуйте через секунду",
+            RED,
+        );
+        return;
+    }
     match plan::decode(text, &tree, rules::PROFILE_LAYOUT) {
         Ok(steps) => {
             let (next, skipped) = Plan::fitted(&tree, &profile, &steps);
@@ -725,8 +675,10 @@ pub fn tooltip_line(tree: &Arc<Tree>, profile: &Arc<Profile>, id: u16) -> Option
 /// Every frame on the client.
 pub fn on_frame(game: &mut Game<'_>) {
     read_settings_once();
+    let open = game.native_mod_screen() == Some(ID);
     let (paste, copy, sends) = {
         let mut state = window();
+        state.open_last_frame = open;
         let take = state.applying.len().min(APPLY_PER_FRAME);
         let sends: Vec<u16> = state.applying.drain(..take).collect();
         (std::mem::take(&mut state.paste), state.copy.take(), sends)
@@ -773,6 +725,8 @@ fn observe_session() {
     };
     let mut state = window();
     if !tree_known {
+        // A new connection: ranks queued for the old one are not sent.
+        state.applying.clear();
         if state.session_live {
             state.session = Session::default();
             state.session_live = false;

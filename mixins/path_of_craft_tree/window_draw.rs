@@ -9,9 +9,10 @@ use crate::game::{
 use horizon_client::hud::HudBatch;
 use look::{Look, Shown};
 use paint::Scene;
+use plan::{Cost, Plan};
 use rules::{Profile, Tree};
 use std::sync::Arc;
-use window::{AQUA, Button, GREEN, GREY, Line, Panel, PlanView, RED, WHITE, Window};
+use window::{AQUA, Button, GREEN, GREY, RED, WHITE, Window};
 
 /// The tool row under the header, and its parts.
 const ROW_Y: f32 = 23.0;
@@ -35,6 +36,80 @@ const STATS_W: f32 = 340.0;
 const SOURCES_SHOWN: usize = 5;
 /// The badge text of planned ranks.
 const PLUS: [&str; 4] = ["+1", "+2", "+3", "+4"];
+
+/// What the planner shows for one plan, profile and tree.
+#[derive(Clone)]
+pub struct PlanView {
+    /// Planned ranks by node id.
+    planned: Vec<u8>,
+    /// Each planned node once, in plan order.
+    pub ids: Vec<u16>,
+    /// The path: each newly planned node and the neighbour it is reached through.
+    pub parents: Vec<(u16, u16)>,
+    pub cost: Cost,
+    pub steps: usize,
+}
+
+impl PlanView {
+    pub fn new(tree: &Tree, profile: &Profile, plan: &Plan) -> PlanView {
+        let size = tree
+            .nodes
+            .keys()
+            .last()
+            .map_or(0, |id| usize::from(*id) + 1);
+        let mut planned = vec![0u8; size];
+        let mut ids = Vec::new();
+        for &id in plan.steps() {
+            if let Some(slot) = planned.get_mut(usize::from(id)) {
+                if *slot == 0 {
+                    ids.push(id);
+                }
+                *slot = slot.saturating_add(1);
+            }
+        }
+        PlanView {
+            planned,
+            ids,
+            parents: plan.parents(tree, profile),
+            cost: plan.cost(tree, profile),
+            steps: plan.steps().len(),
+        }
+    }
+
+    /// The same path with the points of another profile.
+    pub fn with_cost(&self, cost: Cost) -> PlanView {
+        PlanView {
+            cost,
+            ..self.clone()
+        }
+    }
+
+    pub fn planned(&self, id: u16) -> u8 {
+        self.planned.get(usize::from(id)).copied().unwrap_or(0)
+    }
+}
+
+/// A panel's lines, laid out once and kept while nothing they show changes.
+#[derive(Debug, Clone, Default)]
+pub struct Panel {
+    pub lines: Vec<Line>,
+    /// The widest line, in GUI pixels.
+    pub width: f32,
+}
+
+/// A line of a panel: texts at offsets from the panel's left, each with its colour.
+#[derive(Debug, Clone, Default)]
+pub struct Line {
+    pub cells: Vec<(String, f32, u32)>,
+}
+
+impl Line {
+    pub fn text(text: impl Into<String>, colour: u32) -> Line {
+        Line {
+            cells: vec![(text.into(), 0.0, colour)],
+        }
+    }
+}
 
 fn inside(rect: [f32; 4], at: [f32; 2]) -> bool {
     at[0] >= rect[0] && at[0] <= rect[0] + rect[2] && at[1] >= rect[1] && at[1] <= rect[1] + rect[3]
