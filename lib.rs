@@ -278,6 +278,111 @@ mod shipped_tree {
     /// Taken from the zone map of the approved design; regenerating data/tree.json changes it.
     const ZONE_CHECKSUM: u64 = 0x5e94_290d_004c_3059;
 
+    /// A link's look the way paint.rs worked it out every frame from a fresh `Standing`.
+    fn link_by_standing(s: &crate::look::Standing, a: u16, b: u16) -> crate::look::LinkLook {
+        use crate::look::LinkLook;
+        let (fa, fb) = (s.is_full(a), s.is_full(b));
+        if fa && fb {
+            if s.is_off(a) || s.is_off(b) {
+                LinkLook::Off
+            } else {
+                LinkLook::Learned
+            }
+        } else if (fa && s.is_open(b)) || (fb && s.is_open(a)) {
+            LinkLook::Open
+        } else {
+            LinkLook::Plain
+        }
+    }
+
+    /// The energy's links the way paint.rs picked them every frame.
+    fn flows_by_standing(
+        tree: &Tree,
+        look: &crate::look::Look,
+        s: &crate::look::Standing,
+    ) -> Vec<crate::look::Flow> {
+        let mut flows = Vec::new();
+        for (edge, (a, b)) in look.edges.iter().enumerate() {
+            if !s.is_full(*a) || !s.is_full(*b) || s.is_off(*a) || s.is_off(*b) {
+                continue;
+            }
+            let (da, db) = (look.dist[a], look.dist[b]);
+            let (from, to) = if da <= db { (a, b) } else { (b, a) };
+            let (p, q) = (&tree.nodes[from], &tree.nodes[to]);
+            flows.push(crate::look::Flow {
+                edge,
+                from: *from,
+                to: *to,
+                start: da.min(db),
+                length: (q.x - p.x).hypot(q.y - p.y),
+            });
+        }
+        flows
+    }
+
+    #[test]
+    fn the_window_s_view_per_profile_matches_a_standing_per_frame() {
+        use crate::look::{LinkLook, Look, Shown, Standing};
+        let tree = shipped();
+        let look = Look::new(&tree);
+        let full = grown(&tree, 4_000.0);
+        let mut switched = full.clone();
+        switched.disabled = full.ranks.keys().copied().step_by(7).collect();
+        let profiles = [tree.new_profile(), grown(&tree, 300.0), full, switched];
+        let mut seen_links = std::collections::BTreeSet::new();
+        for profile in &profiles {
+            let shown = Shown::new(&tree, &look, profile);
+            let standing = Standing::new(&tree, profile);
+            for &id in tree.nodes.keys() {
+                assert_eq!(shown.state(id), standing.state(id), "node {id}");
+                assert_eq!(shown.rank(id), standing.rank(id), "node {id}");
+            }
+            for (edge, (a, b)) in look.edges.iter().enumerate() {
+                let old = link_by_standing(&standing, *a, *b);
+                assert_eq!(shown.links[edge], old, "link {a}-{b}");
+                seen_links.insert(format!("{old:?}"));
+            }
+            assert_eq!(shown.flows, flows_by_standing(&tree, &look, &standing));
+            assert_eq!(shown.general_level, tree.general_level(profile));
+            assert_eq!(shown.general_points, tree.general_points(profile));
+            for id in tree.branches.keys() {
+                let xp = profile.xp.get(id).copied().unwrap_or(0.0);
+                let branch = shown.branches[id];
+                assert_eq!((branch.level, branch.progress), tree.level_progress(xp));
+                assert_eq!(branch.points, tree.branch_points(profile, id));
+            }
+        }
+        let every = [
+            LinkLook::Plain,
+            LinkLook::Open,
+            LinkLook::Learned,
+            LinkLook::Off,
+        ];
+        for kind in every {
+            assert!(
+                seen_links.contains(&format!("{kind:?}")),
+                "{kind:?} not tried"
+            );
+        }
+    }
+
+    #[test]
+    fn the_window_s_cull_data_follows_the_tree() {
+        let tree = shipped();
+        let look = crate::look::Look::new(&tree);
+        assert_eq!(look.draw_spots.len(), look.draw_order.len());
+        for (id, spot) in look.draw_order.iter().zip(&look.draw_spots) {
+            assert_eq!(*spot, [tree.nodes[id].x, tree.nodes[id].y]);
+        }
+        assert_eq!(look.edge_boxes.len(), look.edges.len());
+        for ((a, b), bounds) in look.edges.iter().zip(&look.edge_boxes) {
+            for node in [&tree.nodes[a], &tree.nodes[b]] {
+                assert!(bounds[0] <= node.x && node.x <= bounds[2]);
+                assert!(bounds[1] <= node.y && node.y <= bounds[3]);
+            }
+        }
+    }
+
     #[test]
     fn window_distances_match_the_scanning_search() {
         let tree = shipped();

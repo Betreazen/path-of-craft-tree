@@ -8,10 +8,10 @@ use crate::game::{
     pct_look as look, pct_paint as paint, pct_rules as rules, pct_view as view,
 };
 use horizon_client::hud::HudBatch;
-use look::{Look, Standing, State};
+use look::{Look, Shown, State};
 use paint::Scene;
 use rules::{Kind, Node, Profile, Refusal, Tree};
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 use std::time::Instant;
 use view::Camera;
 
@@ -41,6 +41,33 @@ const LEGEND: [(State, &str); 4] = [
 
 static OPENED: LazyLock<Instant> = LazyLock::new(Instant::now);
 
+/// What the window shows of the last profile and tree it drew, until either is replaced.
+struct ShownFor {
+    tree: Arc<Tree>,
+    profile: Arc<Profile>,
+    shown: Arc<Shown>,
+}
+
+static SHOWN: Mutex<Option<ShownFor>> = Mutex::new(None);
+
+/// The window's view of `profile`, worked out again only when a new profile or tree arrived.
+fn shown_for(tree: &Arc<Tree>, look: &Look, profile: &Arc<Profile>) -> Arc<Shown> {
+    let mut cached = SHOWN.lock().unwrap_or_else(PoisonError::into_inner);
+    let known = cached
+        .as_ref()
+        .filter(|c| Arc::ptr_eq(&c.tree, tree) && Arc::ptr_eq(&c.profile, profile));
+    if let Some(known) = known {
+        return known.shown.clone();
+    }
+    let shown = Arc::new(Shown::new(tree, look, profile));
+    *cached = Some(ShownFor {
+        tree: tree.clone(),
+        profile: profile.clone(),
+        shown: shown.clone(),
+    });
+    shown
+}
+
 fn is_ours(game: &Game<'_>, screen: &NativeScreenView<'_>) -> bool {
     screen.id == "mod" && game.native_mod_screen() == Some(ID)
 }
@@ -63,11 +90,18 @@ fn hit_node<'a>(
     cursor: [f32; 2],
 ) -> Option<&'a Node> {
     let level = look::level(look.spacing, camera.zoom);
-    look.draw_order.iter().rev().find_map(|id| {
+    // The start's area is the widest: only a node that close is looked up.
+    let widest = look::hit_half(Kind::Start, level);
+    let mut spots = look.draw_order.iter().zip(&look.draw_spots).rev();
+    spots.find_map(|(id, spot)| {
+        let [x, y] = camera.to_screen(centre, *spot);
+        let (dx, dy) = ((cursor[0] - x).abs(), (cursor[1] - y).abs());
+        if dx > widest || dy > widest {
+            return None;
+        }
         let node = &tree.nodes[id];
-        let [x, y] = camera.to_screen(centre, [node.x, node.y]);
         let half = look::hit_half(node.kind, level);
-        ((cursor[0] - x).abs() <= half && (cursor[1] - y).abs() <= half).then_some(node)
+        (dx <= half && dy <= half).then_some(node)
     })
 }
 
@@ -115,11 +149,11 @@ fn wrap(game: &Game<'_>, text: &str) -> Vec<String> {
     lines
 }
 
-fn status_line(tree: &Tree, profile: &Profile, standing: &Standing, node: &Node) -> (String, u32) {
+fn status_line(tree: &Tree, profile: &Profile, shown: &Shown, node: &Node) -> (String, u32) {
     let ranks = node.max_rank();
     let rank = profile.rank(node.id);
     let line = |text: &str, colour| (text.to_owned(), colour);
-    match standing.state(node.id) {
+    match shown.state(node.id) {
         State::Off => return line("Выключено. ПКМ: включить", RED),
         State::Learned if node.kind == Kind::Big => return line("Изучено. ПКМ: выключить", GREY),
         State::Learned => return line("Изучено", GREY),
@@ -149,7 +183,7 @@ fn tooltip_lines(
     tree: &Tree,
     look: &Look,
     profile: &Profile,
-    standing: &Standing,
+    shown: &Shown,
     node: &Node,
 ) -> Vec<(String, u32)> {
     let title = if node.kind == Kind::Big { GOLD } else { WHITE };
@@ -185,7 +219,7 @@ fn tooltip_lines(
     if node.todo {
         lines.push(("Эффект ещё не реализован".to_owned(), RED));
     }
-    lines.push(status_line(tree, profile, standing, node));
+    lines.push(status_line(tree, profile, shown, node));
     lines
 }
 
@@ -259,9 +293,8 @@ fn draw_header(
     game: &Game<'_>,
     batch: &mut HudBatch,
     screen: &NativeScreenView<'_>,
-    tree: &Tree,
     look: &Look,
-    profile: &Profile,
+    shown: &Shown,
     branch: Option<&str>,
 ) {
     let mut x = screen.rect[0] + HEADER_AT[0];
@@ -270,34 +303,32 @@ fn draw_header(
         game.native_text(batch, text, [*x, y], colour, true);
         *x += game.native_text_width(text);
     };
-    let found = branch.and_then(|id| Some((id, look.branch(id)?)));
-    if let Some((id, shown)) = found {
+    let found = branch.and_then(|id| Some((look.branch(id)?, shown.branches.get(id)?)));
+    if let Some((branch, standing)) = found {
         let start = x;
-        let xp = profile.xp.get(id).copied().unwrap_or(0.0);
-        let (level, progress) = tree.level_progress(xp);
         put(
             batch,
             &mut x,
-            &shown.name,
-            look::mix(WHITE, shown.colour, 0.45),
+            &branch.name,
+            look::mix(WHITE, branch.colour, 0.45),
         );
         let rest = format!(
-            ": ур. {level} ({:.0}%), очки {}",
-            progress * 100.0,
-            tree.branch_points(profile, id)
+            ": ур. {} ({:.0}%), очки {}",
+            standing.level,
+            standing.progress * 100.0,
+            standing.points
         );
         put(batch, &mut x, &rest, WHITE);
         game.native_fill(
             batch,
             [start, y + LINE_HEIGHT, x - start, 2.0],
-            0xFF00_0000 | shown.colour,
+            0xFF00_0000 | branch.colour,
         );
         x += 14.0;
     }
     let general = format!(
         "Общие: ур. {}, очки {}",
-        tree.general_level(profile),
-        tree.general_points(profile)
+        shown.general_level, shown.general_points
     );
     put(batch, &mut x, &general, WHITE);
 }
@@ -399,12 +430,12 @@ fn draw_window(
     batch: &mut HudBatch,
     screen: &NativeScreenView<'_>,
     tree: &Arc<Tree>,
-    profile: &Profile,
+    profile: &Arc<Profile>,
     camera: Camera,
     armed: bool,
 ) {
     let look = art::look_for(tree);
-    let standing = Standing::new(tree, profile);
+    let shown = shown_for(tree, &look, profile);
     let centre = centre_of(screen);
     let scene = Scene {
         game,
@@ -413,7 +444,7 @@ fn draw_window(
         camera,
         tree,
         look: &look,
-        standing: &standing,
+        shown: &shown,
         sheet: art::sheet(),
         level: look::level(look.spacing, camera.zoom),
         seconds: OPENED.elapsed().as_secs_f32(),
@@ -425,11 +456,11 @@ fn draw_window(
         scene.hover(batch, node);
     }
     let branch = hovered.and_then(|node| node.branch.as_deref());
-    draw_header(game, batch, screen, tree, &look, profile, branch);
+    draw_header(game, batch, screen, &look, &shown, branch);
     draw_respec(game, batch, screen, armed);
     draw_legend(&scene, batch);
     if let Some(node) = hovered {
-        let lines = tooltip_lines(game, tree, &look, profile, &standing, node);
+        let lines = tooltip_lines(game, tree, &look, profile, &shown, node);
         draw_tooltip(game, batch, screen, &lines);
     }
 }

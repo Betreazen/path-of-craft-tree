@@ -909,6 +909,7 @@ pub fn on_player_tick(game: &mut Game<'_>) {
         return;
     };
     state().game_modes.insert(acting.uuid, acting.game_mode);
+    crate::game::pct_mining::prefetch_near(game, &acting.dimension, acting.position);
     effects::on_tick(game, &acting);
     crate::game::pct_fx_gather::on_tick(game, &acting);
     crate::game::pct_fx_farm::on_tick(game, &acting);

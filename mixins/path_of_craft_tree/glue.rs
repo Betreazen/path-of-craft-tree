@@ -71,7 +71,8 @@ pub struct Server {
 #[derive(Default)]
 pub struct Client {
     pub tree: Option<Arc<Tree>>,
-    pub profile: Profile,
+    /// Shared, so the tree window takes it without a copy; replaced by each state message.
+    pub profile: Arc<Profile>,
     pub effects: Arc<Effects>,
     assembler: Assembler,
     pub problem: Option<String>,
@@ -806,6 +807,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
     };
     crate::game::pct_actions::on_server_tick(game);
     crate::game::pct_selftest::on_server_tick(game);
+    crate::game::pct_mining::merge_prefetched(game);
     crate::game::pct_mining::apply_piston_moves(game);
     write_summaries(game);
     if ticks % SAVE_EVERY_TICKS == 0 {
@@ -831,7 +833,7 @@ pub fn on_server_message(channel: &str, data: &[u8]) {
         HELLO => {
             let server_protocol = rules::decode_u16(data);
             view.tree = None;
-            view.profile = Profile::default();
+            view.profile = Arc::default();
             view.effects = Arc::default();
             view.owe_hello = true;
             view.problem = (server_protocol != Some(client_protocol())).then(|| {
@@ -858,7 +860,7 @@ pub fn on_server_message(channel: &str, data: &[u8]) {
                 if let Some(tree) = &view.tree {
                     view.effects = Arc::new(tree.effects(&profile));
                 }
-                view.profile = profile;
+                view.profile = Arc::new(profile);
             }
         }
         _ => {}

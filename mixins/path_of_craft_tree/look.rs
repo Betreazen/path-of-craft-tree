@@ -133,6 +133,10 @@ pub struct Look {
     pub zones: Zones,
     /// Small nodes first and the start last, so bigger frames are drawn over smaller ones.
     pub draw_order: Vec<u16>,
+    /// Each node's position in `draw_order`'s order, so a frame culls without looking nodes up.
+    pub draw_spots: Vec<[f32; 2]>,
+    /// The world box `[left, top, right, bottom]` of each link in `edges`.
+    pub edge_boxes: Vec<[f32; 4]>,
 }
 
 fn kind_order(kind: Kind) -> u8 {
@@ -460,6 +464,17 @@ impl Look {
         let zones = zones(tree, spacing, &branches);
         let mut draw_order: Vec<u16> = tree.nodes.keys().copied().collect();
         draw_order.sort_by_key(|id| kind_order(tree.nodes[id].kind));
+        let draw_spots = draw_order
+            .iter()
+            .map(|id| [tree.nodes[id].x, tree.nodes[id].y])
+            .collect();
+        let edge_boxes = edges
+            .iter()
+            .map(|(a, b)| {
+                let (p, q) = (&tree.nodes[a], &tree.nodes[b]);
+                [p.x.min(q.x), p.y.min(q.y), p.x.max(q.x), p.y.max(q.y)]
+            })
+            .collect();
         Look {
             dist: distances(tree),
             edges,
@@ -467,6 +482,8 @@ impl Look {
             branches,
             zones,
             draw_order,
+            draw_spots,
+            edge_boxes,
         }
     }
 
@@ -540,6 +557,11 @@ impl<'a> Standing<'a> {
         !self.is_full(id) && self.tree.is_reachable(self.profile, id)
     }
 
+    /// Points left, counted once for every branch and the general pool.
+    pub fn points(&self) -> &Points<'a> {
+        &self.points
+    }
+
     fn can_pay(&self, id: u16) -> bool {
         self.tree
             .nodes
@@ -560,6 +582,152 @@ impl<'a> Standing<'a> {
         } else {
             State::Locked
         }
+    }
+
+    /// How the link between `a` and `b` is drawn.
+    pub fn link(&self, a: u16, b: u16) -> LinkLook {
+        let (fa, fb) = (self.is_full(a), self.is_full(b));
+        if fa && fb {
+            if self.is_off(a) || self.is_off(b) {
+                LinkLook::Off
+            } else {
+                LinkLook::Learned
+            }
+        } else if (fa && self.is_open(b)) || (fb && self.is_open(a)) {
+            LinkLook::Open
+        } else {
+            LinkLook::Plain
+        }
+    }
+
+    /// Whether energy runs along the link between `a` and `b`: both full, neither switched off.
+    pub fn flows(&self, a: u16, b: u16) -> bool {
+        self.is_full(a) && self.is_full(b) && !self.is_off(a) && !self.is_off(b)
+    }
+}
+
+/// How a link is drawn: gold between two full nodes, red when one of them is switched off, green
+/// from a full node to one that is open, grey otherwise.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LinkLook {
+    Plain,
+    Open,
+    Learned,
+    Off,
+}
+
+/// A learned link the energy runs along, from its end nearer the start.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Flow {
+    /// The link's index in `Look::edges`.
+    pub edge: usize,
+    pub from: u16,
+    pub to: u16,
+    /// The near end's distance from the start.
+    pub start: f32,
+    pub length: f32,
+}
+
+/// What the window shows of one profile: each node's state and rank, each link's look, the
+/// links the energy runs along and the points left. Worked out when a profile or tree arrives
+/// and read by every frame after that, instead of a `Standing` every frame.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Shown {
+    /// By node id: the state and rank; `None` for ids the tree does not have.
+    nodes: Vec<Option<(State, u8)>>,
+    /// By link, in the order of `Look::edges`.
+    pub links: Vec<LinkLook>,
+    /// In the order of `Look::edges`.
+    pub flows: Vec<Flow>,
+    pub general_level: u32,
+    pub general_points: u32,
+    /// By branch id.
+    pub branches: BTreeMap<String, BranchStanding>,
+}
+
+/// A branch's level, the progress towards the next one (0 to 1) and the points left.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BranchStanding {
+    pub level: u32,
+    pub progress: f64,
+    pub points: u32,
+}
+
+impl Shown {
+    pub fn new(tree: &Tree, look: &Look, profile: &Profile) -> Shown {
+        let standing = Standing::new(tree, profile);
+        let size = tree
+            .nodes
+            .keys()
+            .last()
+            .map_or(0, |id| usize::from(*id) + 1);
+        let mut nodes = vec![None; size];
+        for id in tree.nodes.keys() {
+            nodes[usize::from(*id)] = Some((standing.state(*id), standing.rank(*id)));
+        }
+        let links = look
+            .edges
+            .iter()
+            .map(|(a, b)| standing.link(*a, *b))
+            .collect();
+        let flows = look
+            .edges
+            .iter()
+            .enumerate()
+            .filter(|(_, (a, b))| standing.flows(*a, *b))
+            .map(|(edge, (a, b))| {
+                let (da, db) = (look.dist[a], look.dist[b]);
+                let (from, to) = if da <= db { (*a, *b) } else { (*b, *a) };
+                let (p, q) = (&tree.nodes[&from], &tree.nodes[&to]);
+                Flow {
+                    edge,
+                    from,
+                    to,
+                    start: da.min(db),
+                    length: (q.x - p.x).hypot(q.y - p.y),
+                }
+            })
+            .collect();
+        let branches = tree
+            .branches
+            .keys()
+            .map(|id| {
+                let xp = profile.xp.get(id).copied().unwrap_or(0.0);
+                let (level, progress) = tree.level_progress(xp);
+                let points = standing
+                    .points()
+                    .branch
+                    .get(id.as_str())
+                    .copied()
+                    .unwrap_or(0);
+                let standing = BranchStanding {
+                    level,
+                    progress,
+                    points,
+                };
+                (id.clone(), standing)
+            })
+            .collect();
+        Shown {
+            nodes,
+            links,
+            flows,
+            general_level: tree.general_level(profile),
+            general_points: standing.points().general,
+            branches,
+        }
+    }
+
+    pub fn state(&self, id: u16) -> State {
+        self.node(id).map_or(State::Locked, |(state, _)| state)
+    }
+
+    pub fn rank(&self, id: u16) -> u8 {
+        self.node(id).map_or(0, |(_, rank)| rank)
+    }
+
+    fn node(&self, id: u16) -> Option<(State, u8)> {
+        self.nodes.get(usize::from(id)).copied().flatten()
     }
 }
 

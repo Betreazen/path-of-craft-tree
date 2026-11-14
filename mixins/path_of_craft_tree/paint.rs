@@ -1,11 +1,12 @@
 // Drawing the tree as the approved preview does (design/preview/render.js): the stone backdrop
 // with its vignette and branch zones, links that turn gold when both ends are learned, framed
 // pixel icons with rank badges, branch banners and names, and the energy running outward along
-// learned links. Only what is on screen is drawn.
+// learned links. Only what is on screen is drawn, and the look of every node and link comes from
+// `Shown`, worked out once per profile message.
 use crate::game::{Game, pct_art as art, pct_look as look, pct_rules as rules, pct_view as view};
 use art::{Piece, Sheet};
 use horizon_client::hud::HudBatch;
-use look::{Look, Standing, State};
+use look::{LinkLook, Look, Shown, State};
 use rules::{Kind, Node, Tree};
 use view::Camera;
 
@@ -33,6 +34,8 @@ const GOLD_LINK: [u32; 2] = [0xFFF2BB1D, 0xFF1A1003];
 const OFF_LINK: [u32; 2] = [0xFF9A443E, 0xFF140707];
 const OPEN_LINK: [u32; 2] = [0xFF4C9A3E, 0xFF08100A];
 const PLAIN_LINK: [u32; 2] = [0xFF5C5C66, 0xFF0A0A0D];
+/// Slack in GUI pixels for the cheap cull in world units, well beyond any rounding.
+const CULL_SLACK: f32 = 2.0;
 
 /// Everything one frame of the window needs to draw the tree.
 pub struct Scene<'a, 'g> {
@@ -42,7 +45,7 @@ pub struct Scene<'a, 'g> {
     pub camera: Camera,
     pub tree: &'a Tree,
     pub look: &'a Look,
-    pub standing: &'a Standing<'a>,
+    pub shown: &'a Shown,
     pub sheet: Option<&'static Sheet>,
     pub level: f32,
     pub seconds: f32,
@@ -172,20 +175,29 @@ impl Scene<'_, '_> {
         self.game.native_sprite(batch, art::SPRITE, src, dst);
     }
 
-    fn link_colours(&self, a: u16, b: u16) -> [u32; 2] {
-        let s = self.standing;
-        let (fa, fb) = (s.is_full(a), s.is_full(b));
-        if fa && fb {
-            if s.is_off(a) || s.is_off(b) {
-                OFF_LINK
-            } else {
-                GOLD_LINK
-            }
-        } else if (fa && s.is_open(b)) || (fb && s.is_open(a)) {
-            OPEN_LINK
-        } else {
-            PLAIN_LINK
+    fn link_colours(&self, edge: usize) -> [u32; 2] {
+        match self.shown.links.get(edge) {
+            Some(LinkLook::Off) => OFF_LINK,
+            Some(LinkLook::Learned) => GOLD_LINK,
+            Some(LinkLook::Open) => OPEN_LINK,
+            Some(LinkLook::Plain) | None => PLAIN_LINK,
         }
+    }
+
+    /// The screen plus `pad` GUI pixels around it, as a world box `[left, top, right, bottom]`.
+    fn world_view(&self, pad: f32) -> [f32; 4] {
+        let [x, y, w, h] = self.rect;
+        let pad = pad + CULL_SLACK;
+        let a = self.camera.to_world(self.centre, [x - pad, y - pad]);
+        let b = self
+            .camera
+            .to_world(self.centre, [x + w + pad, y + h + pad]);
+        [
+            a[0].min(b[0]),
+            a[1].min(b[1]),
+            a[0].max(b[0]),
+            a[1].max(b[1]),
+        ]
     }
 
     fn crosses_screen(&self, from: [f32; 2], to: [f32; 2]) -> bool {
@@ -292,17 +304,22 @@ impl Scene<'_, '_> {
         } else {
             (1.0, 0.0)
         };
+        // A cheap cull in world units first; the links left get the exact test on screen.
+        let view = self.world_view(0.0);
         let visible: Vec<([f32; 2], [f32; 2], [u32; 2])> = self
             .look
             .edges
             .iter()
-            .filter_map(|(a, b)| {
+            .zip(&self.look.edge_boxes)
+            .enumerate()
+            .filter(|(_, (_, bounds))| overlaps(view, **bounds))
+            .filter_map(|(edge, ((a, b), _))| {
                 let (from, to) = (
                     self.place(&self.tree.nodes[a]),
                     self.place(&self.tree.nodes[b]),
                 );
                 self.crosses_screen(from, to)
-                    .then(|| (from, to, self.link_colours(*a, *b)))
+                    .then(|| (from, to, self.link_colours(edge)))
             })
             .collect();
         if outline > 0.0 {
@@ -361,7 +378,7 @@ impl Scene<'_, '_> {
         if ranks < 2 {
             return;
         }
-        let Some(badge) = sheet.badge(self.standing.rank(node.id), ranks, compact) else {
+        let Some(badge) = sheet.badge(self.shown.rank(node.id), ranks, compact) else {
             return;
         };
         let reach = if compact {
@@ -380,13 +397,13 @@ impl Scene<'_, '_> {
 
     pub fn nodes(&self, batch: &mut HudBatch) {
         let margin = 40.0 * self.level.max(1.0);
-        for id in &self.look.draw_order {
-            let node = &self.tree.nodes[id];
-            let at = self.place(node);
+        for (id, spot) in self.look.draw_order.iter().zip(&self.look.draw_spots) {
+            let at = self.camera.to_screen(self.centre, *spot);
             if !self.on_screen(at, margin) {
                 continue;
             }
-            let state = self.standing.state(*id);
+            let node = &self.tree.nodes[id];
+            let state = self.shown.state(*id);
             if self.level > 0.0 {
                 self.framed(batch, node, at, state);
             } else {
@@ -512,19 +529,23 @@ impl Scene<'_, '_> {
             2.0
         };
         let snap = |value: f32| ((value - core / 2.0) / (core / 2.0)).round() * (core / 2.0);
-        let s = self.standing;
+        // A particle stays on its link, snapped by less than a core: links off screen by more
+        // than two cores cannot show one.
+        let view = self.world_view(2.0 * core);
         let mut spots = Vec::new();
-        for (a, b) in &self.look.edges {
-            if !s.is_full(*a) || !s.is_full(*b) || s.is_off(*a) || s.is_off(*b) {
+        for flow in &self.shown.flows {
+            let on_view = self
+                .look
+                .edge_boxes
+                .get(flow.edge)
+                .is_some_and(|bounds| overlaps(view, *bounds));
+            if !on_view {
                 continue;
             }
-            let (da, db) = (self.look.dist[a], self.look.dist[b]);
-            let (from, to) = if da <= db { (a, b) } else { (b, a) };
-            let (p, q) = (&self.tree.nodes[from], &self.tree.nodes[to]);
-            let length = (q.x - p.x).hypot(q.y - p.y);
-            let Some(t) = look::flow_at(self.seconds, da.min(db), length) else {
+            let Some(t) = look::flow_at(self.seconds, flow.start, flow.length) else {
                 continue;
             };
+            let (p, q) = (&self.tree.nodes[&flow.from], &self.tree.nodes[&flow.to]);
             let (sp, sq) = (self.place(p), self.place(q));
             let at = [
                 snap(sp[0] + (sq[0] - sp[0]) * t),
@@ -553,4 +574,9 @@ impl Scene<'_, '_> {
         self.branches(batch);
         self.flow(batch);
     }
+}
+
+/// Whether two world boxes `[left, top, right, bottom]` meet.
+fn overlaps(a: [f32; 4], b: [f32; 4]) -> bool {
+    a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
 }

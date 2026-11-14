@@ -23,9 +23,13 @@ pub enum Probe {
     LookNew,
     AtlasCompose,
     AtlasUpload,
+    /// A region of placed marks read on the server thread.
+    RegionRead,
+    /// A region of placed marks read ahead on the prefetch thread.
+    RegionPrefetch,
 }
 
-const PROBES: usize = 13;
+const PROBES: usize = 15;
 const NAMES: [&str; PROBES] = [
     "player_tick",
     "server_tick",
@@ -40,6 +44,8 @@ const NAMES: [&str; PROBES] = [
     "look_new",
     "atlas_compose",
     "atlas_upload",
+    "region_read",
+    "region_prefetch",
 ];
 
 static CALLS: [AtomicU64; PROBES] = [const { AtomicU64::new(0) }; PROBES];
