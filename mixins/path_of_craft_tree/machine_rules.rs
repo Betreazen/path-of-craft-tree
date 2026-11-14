@@ -176,8 +176,15 @@ pub enum Report {
     Biome { owner: u128, biome: String },
     /// The machine found `structure`.
     Structure { owner: u128, structure: String },
+    /// The machine finished `brews` brewing runs that filled `bottles` bottles in all, one to
+    /// three a run; a report without the bottles counts three a run.
+    Brew {
+        owner: u128,
+        brews: u32,
+        bottles: u32,
+    },
     /// Work paid by one action of the tree, `times` over: repairs, breeding, shearing, honey,
-    /// brushing, brews and enchanting levels.
+    /// brushing and enchanting levels.
     Work { owner: u128, work: Work, times: u32 },
 }
 
@@ -194,20 +201,17 @@ pub enum Work {
     Honey,
     /// Count: suspicious blocks brushed.
     Brush,
-    /// Count: brewing runs finished, each a stand of three bottles.
-    Brew,
     /// Count: enchanting levels charged, as a table would charge them (1 to 3 an item).
     Enchant,
 }
 
 impl Work {
-    const ALL: [(&'static str, Work); 7] = [
+    const ALL: [(&'static str, Work); 6] = [
         ("repair", Work::Repair),
         ("breed", Work::Breed),
         ("shear", Work::Shear),
         ("honey", Work::Honey),
         ("brush", Work::Brush),
-        ("brew", Work::Brew),
         ("enchant", Work::Enchant),
     ];
 
@@ -217,6 +221,18 @@ impl Work {
             .find(|(name, _)| *name == word)
             .map(|(_, work)| *work)
     }
+}
+
+/// The bottles a brewing stand holds: a brew report without them counts a full stand a run.
+pub const BOTTLES_PER_RUN: u32 = 3;
+
+/// A brew report's bottles: from one to three for each of its `brews`.
+fn brew_bottles(word: &str, brews: u32) -> Result<u32, String> {
+    let most = brews.saturating_mul(BOTTLES_PER_RUN);
+    word.parse::<u32>()
+        .ok()
+        .filter(|bottles| (brews..=most).contains(bottles))
+        .ok_or_else(|| format!("bottles {word} is not between {brews} and {most}"))
 }
 
 /// Reads the words after the command name.
@@ -291,6 +307,19 @@ pub fn parse(line: &str) -> Result<Report, String> {
             owner: words.owner()?,
             structure: words.text("structure")?,
         },
+        "brew" => {
+            let owner = words.owner()?;
+            let brews = words.count("brews")?;
+            let bottles = match words.0.next() {
+                None => brews.saturating_mul(BOTTLES_PER_RUN),
+                Some(word) => brew_bottles(word, brews)?,
+            };
+            Report::Brew {
+                owner,
+                brews,
+                bottles,
+            }
+        }
         other => match Work::from_word(other) {
             Some(work) => Report::Work {
                 owner: words.owner()?,
@@ -458,6 +487,34 @@ mod tests {
                 }),
                 "{word}"
             );
+        }
+    }
+
+    #[test]
+    fn a_brew_report_counts_its_bottles_or_three_a_run() {
+        assert_eq!(
+            parse("brew 0123abcd456789ef0123456789abcdef 2"),
+            Ok(Report::Brew {
+                owner: OWNER,
+                brews: 2,
+                bottles: 6,
+            })
+        );
+        assert_eq!(
+            parse("brew 0123abcd456789ef0123456789abcdef 2 4"),
+            Ok(Report::Brew {
+                owner: OWNER,
+                brews: 2,
+                bottles: 4,
+            })
+        );
+        for line in [
+            "brew 0123abcd456789ef0123456789abcdef 2 1",
+            "brew 0123abcd456789ef0123456789abcdef 2 7",
+            "brew 0123abcd456789ef0123456789abcdef 2 four",
+            "brew 0123abcd456789ef0123456789abcdef 2 4 extra",
+        ] {
+            assert!(parse(line).is_err(), "accepted {line:?}");
         }
     }
 

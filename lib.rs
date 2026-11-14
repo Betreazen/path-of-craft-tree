@@ -9,10 +9,14 @@ mod fx_farm_rules;
 mod fx_gather_rules;
 #[path = "mixins/path_of_craft_tree/fx_roam_rules.rs"]
 mod fx_roam_rules;
+#[path = "mixins/path_of_craft_tree/limits.rs"]
+pub mod limits;
 #[path = "mixins/path_of_craft_tree/look.rs"]
 pub mod look;
 #[path = "mixins/path_of_craft_tree/machine_rules.rs"]
 pub mod machine_rules;
+#[path = "mixins/path_of_craft_tree/pace_counter.rs"]
+pub mod pace_counter;
 #[path = "mixins/path_of_craft_tree/placed.rs"]
 pub mod placed;
 #[path = "mixins/path_of_craft_tree/rules.rs"]
@@ -531,7 +535,10 @@ mod shipped_tree {
             "netherite_boots",
         ] {
             let id = format!("minecraft:{item}");
-            assert!(tree.has_suffix_in("gear_suffixes", &id), "{item} pays nothing");
+            assert!(
+                tree.has_suffix_in("gear_suffixes", &id),
+                "{item} pays nothing"
+            );
         }
         for item in [
             "wooden_shovel",

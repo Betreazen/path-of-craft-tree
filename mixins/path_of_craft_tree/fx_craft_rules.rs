@@ -17,8 +17,8 @@ pub fn craft_xp_times(ingredients: u32, craft_xp: f64) -> f64 {
     f64::from(ingredients.min(MAX_CRAFT_INGREDIENTS)) * (1.0 + craft_xp)
 }
 
-/// Lives in the tree data as `act:craft`; kept here so the test documents the 0.5 to 8 range.
-pub const CRAFT_XP_PER_INGREDIENT: f64 = 0.5;
+/// Lives in the tree data as `act:craft`; kept here so the test documents the 0.8 to 12.8 range.
+pub const CRAFT_XP_PER_INGREDIENT: f64 = 0.8;
 
 const REDSTONE_RECIPES: [&str; 24] = [
     "piston",
@@ -347,10 +347,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn crafting_pays_half_a_point_per_ingredient_up_to_eight() {
-        assert_eq!(craft_xp_times(1, 0.0) * CRAFT_XP_PER_INGREDIENT, 0.5);
-        assert_eq!(craft_xp_times(9, 0.0) * CRAFT_XP_PER_INGREDIENT, 4.5);
-        assert_eq!(craft_xp_times(40, 0.0) * CRAFT_XP_PER_INGREDIENT, 8.0);
+    fn crafting_pays_per_ingredient_up_to_sixteen_ingredients() {
+        let pays = |ingredients| craft_xp_times(ingredients, 0.0) * CRAFT_XP_PER_INGREDIENT;
+        assert!((pays(1) - 0.8).abs() < 1e-9);
+        assert!((pays(9) - 7.2).abs() < 1e-9);
+        assert!((pays(40) - 12.8).abs() < 1e-9);
         assert_eq!(craft_xp_times(2, 0.5), 3.0);
     }
 

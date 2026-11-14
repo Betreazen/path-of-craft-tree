@@ -91,6 +91,7 @@ fn apply(game: &mut Game<'_>, report: Report) {
             format!("structure:{structure}"),
             "act:structure",
         ),
+        Report::Brew { owner, bottles, .. } => actions::on_machine_brew(game, owner, bottles),
         Report::Work { owner, work, times } => actions::on_machine_work(game, owner, work, times),
     }
 }
