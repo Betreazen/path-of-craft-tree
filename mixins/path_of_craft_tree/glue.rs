@@ -336,6 +336,7 @@ pub fn write_in_folder(path: &Path, bytes: &[u8]) -> Result<(), String> {
 pub fn on_server_stopping(game: &mut Game<'_>) {
     crate::game::pct_mining::apply_piston_moves(game);
     save_everything(game);
+    crate::game::pct_pace_log::write_out(game);
     forget_world();
 }
 
@@ -348,6 +349,7 @@ fn forget_world() {
         state.just_broken.clear();
     }
     crate::game::pct_actions::forget_world();
+    crate::game::pct_pace_log::forget_world();
 }
 
 /// The folder a region's placed blocks are read from.
@@ -687,7 +689,14 @@ pub fn grant(
         };
         // Only the experience table is kept from before; the profile changes in place.
         let before = entry.profile.xp.clone();
+        let general_before = entry.profile.general_xp;
         change(tree, &mut entry.profile);
+        crate::game::pct_pace_log::note_gain(
+            player,
+            &before,
+            &entry.profile.xp,
+            entry.profile.general_xp - general_before,
+        );
         let level = tree.branch_level(&entry.profile, branch);
         let leveled = level
             > tree
@@ -822,6 +831,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
     };
     crate::game::pct_actions::on_server_tick(game);
     crate::game::pct_selftest::on_server_tick(game);
+    crate::game::pct_pace_log::on_server_tick(game);
     crate::game::pct_mining::merge_prefetched(game);
     crate::game::pct_mining::apply_piston_moves(game);
     write_summaries(game);

@@ -1138,9 +1138,9 @@ fn branch_xp(id: &str) -> Map<String, Value> {
                     "cherry_log",
                     "pale_oak_log",
                 ],
-                2.0,
+                3.5,
             ),
-            group(&["crimson_stem", "warped_stem"], 2.5),
+            group(&["crimson_stem", "warped_stem"], 4.5),
             vec![action("strip", 0.25)],
         ]
         .concat(),
@@ -1169,7 +1169,7 @@ fn branch_xp(id: &str) -> Map<String, Value> {
         ],
         "cooking" => vec![
             action("eat", 1.0),
-            action("cook", 4.0),
+            action("cook", 3.0),
             action("campfire", 4.0),
             action("craft_food", 4.0),
             action("stew", 8.0),
@@ -1180,8 +1180,8 @@ fn branch_xp(id: &str) -> Map<String, Value> {
             action("nether_wart", 3.0),
             action("brew_first", 25.0),
         ],
-        "building" => vec![action("build", 1.5), action("deco", 2.0)],
-        "crafting" => vec![action("craft", 0.5), action("craft_first", 15.0)],
+        "building" => vec![action("build", 2.0), action("deco", 2.5)],
+        "crafting" => vec![action("craft", 0.8), action("craft_first", 15.0)],
         "smithing" => vec![
             action("ingot", 5.0),
             action("gear", 15.0),
@@ -1197,8 +1197,8 @@ fn branch_xp(id: &str) -> Map<String, Value> {
         "archery" => vec![action("shot", 1.0)],
         "defense" => vec![action("hit", 4.0), action("block", 6.0)],
         "exploration" => vec![
-            action("chunk", 1.0),
-            action("trade", 10.0),
+            action("chunk", 2.0),
+            action("trade", 3.0),
             action("advancement", 50.0),
             action("biome", 100.0),
             action("dimension", 500.0),
@@ -1288,9 +1288,8 @@ fn lists() -> Value {
         "crafted_food": prefixed(&["bread", "cookie", "pumpkin_pie"]),
         "stews": prefixed(&["mushroom_stew", "rabbit_stew", "beetroot_soup", "suspicious_stew"]),
         "ingots": prefixed(&["iron_ingot", "gold_ingot", "copper_ingot", "netherite_scrap"]),
-        "gear_suffixes": [
-            "_sword", "_pickaxe", "_axe", "_shovel", "_hoe", "_helmet", "_chestplate", "_leggings", "_boots",
-        ],
+        // Smith experience only for metal gear and better: wooden, stone and leather pay nothing.
+        "gear_suffixes": metal_gear(),
         "reversible_recipes": prefixed(&[
             "iron_block", "iron_ingot_from_iron_block", "iron_nugget", "iron_ingot_from_nuggets",
             "gold_block", "gold_ingot_from_gold_block", "gold_nugget", "gold_ingot_from_nuggets",
@@ -1329,6 +1328,25 @@ fn lists() -> Value {
             "peony", "torchflower", "pink_petals", "wildflowers",
         ]),
     })
+}
+
+/// Tools and armor of metal and better, as name endings: `iron_sword`, `chainmail_boots` and so on.
+/// Chainmail has no tools; copper tools and armor exist since 1.21.9.
+fn metal_gear() -> Vec<String> {
+    const TOOLS: [&str; 5] = ["sword", "pickaxe", "axe", "shovel", "hoe"];
+    const ARMOR: [&str; 4] = ["helmet", "chestplate", "leggings", "boots"];
+    const METALS: [&str; 5] = ["iron", "golden", "copper", "diamond", "netherite"];
+    let mut gear: Vec<String> = METALS
+        .iter()
+        .flat_map(|metal| {
+            TOOLS
+                .iter()
+                .chain(&ARMOR)
+                .map(move |part| format!("{metal}_{part}"))
+        })
+        .collect();
+    gear.extend(ARMOR.iter().map(|part| format!("chainmail_{part}")));
+    gear
 }
 
 /// The effect that grows with each branch's level: its main action.

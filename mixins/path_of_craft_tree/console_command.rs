@@ -7,4 +7,7 @@ fn path_of_craft_tree_console_command(
     if !*ran {
         crate::game::pct_selftest::on_console_command(game, command, ran);
     }
+    if !*ran {
+        crate::game::pct_pace_log::on_console_command(game, command, ran);
+    }
 }
