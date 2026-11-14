@@ -146,8 +146,9 @@ fn summon_tagged_mob(game: &mut Game<'_>) -> Option<u32> {
     game.native_summon(DIMENSION, TAGGED_MOB_KIND, TAGGED_MOB_POS, nbt)
 }
 
-/// The kills of the tagged mob, reported by machines: a turret's (as a zombie's worth, the report
-/// names the kind) and a slaughterer's (as the cow it is), each at 145%.
+/// The kills of the tagged mob, reported by machines, each at 145%: a turret's, whose report calls
+/// the cow a zombie on purpose (the tree must pay by the mob's own kind, as for a content mod's mob
+/// built on a vanilla template), and a slaughterer's.
 fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
     let owner = format!("{:032x}", glue::SELFTEST_PLAYER);
     let share = tree.machine_share;
@@ -158,7 +159,7 @@ fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
             reports: vec![format!("kill {owner} {mob} minecraft:zombie")],
             expected: gains([(
                 archery,
-                shot * health(tree, "minecraft:zombie") * share * TAGGED_MULTIPLIER,
+                shot * health(tree, TAGGED_MOB_KIND) * share * TAGGED_MULTIPLIER,
             )]),
         },
         Scenario {
