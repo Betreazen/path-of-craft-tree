@@ -4,11 +4,15 @@
 // experience with what data/tree.json says it should be. The result goes to
 // selftest/path_of_craft_tree.json in the server folder:
 //   { "mod": "path_of_craft_tree", "done": true, "passed": [...], "failed": [{ "name", "why" }] }
-// Nothing is saved for the pretend owner. Every block position the scenarios name lies in the mod's
+// The team scenarios put several pretend owners online at once and check that each earns only its
+// own experience, that shared world state (built spots, a cow's rest, placed marks) holds for all
+// of them and that per-player state (visited chunks, one-time finds) stays per player.
+// Nothing is saved for the pretend owners. Every block position the scenarios name lies in the mod's
 // part of the bench world (z -1000..0, y 100 and up), and the marks they leave are removed again.
 use crate::game::{
     Game, pct_actions as actions, pct_glue as glue, pct_machine_rules as machine,
-    pct_machines as machines, pct_mining as mining, pct_rules::Tree,
+    pct_machines as machines, pct_mining as mining,
+    pct_rules::{Profile, Tree},
 };
 use crate::mod_api::NativeCommand;
 use horizon_client::text::Text;
@@ -30,8 +34,12 @@ const AREA_X: i32 = 500;
 const AREA_Y: i32 = 150;
 const AREA_Z: i32 = -500;
 /// Rows of positions a run may use before it wraps: runs in one server lifetime get fresh spots,
-/// because a built spot pays only once a day.
-const RUN_ROWS: u32 = 200;
+/// because a built spot pays only once a day. 125 rows of 4 blocks keep every row inside the mod's
+/// part of the bench world (z down to -996).
+const RUN_ROWS: u32 = 125;
+const ROW_STEP: i32 = 4;
+/// Entity ids one run may use; the next run starts after them.
+const ENTITIES_PER_RUN: u32 = 16;
 const ENTITY_BASE: u32 = 2_000_000_000;
 const TOLERANCE: f64 = 1e-6;
 
@@ -154,7 +162,7 @@ fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
     let share = tree.machine_share;
     let (archery, shot) = base(tree, "act:shot");
     vec![
-        Scenario {
+        Solo {
             name: TAGGED_SCENARIOS[0],
             reports: vec![format!("kill {owner} {mob} minecraft:zombie")],
             expected: gains([(
@@ -162,7 +170,7 @@ fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
                 shot * health(tree, TAGGED_MOB_KIND) * share * TAGGED_MULTIPLIER,
             )]),
         },
-        Scenario {
+        Solo {
             name: TAGGED_SCENARIOS[1],
             reports: vec![format!("slaughter {owner} {mob} {TAGGED_MOB_KIND}")],
             expected: gains([(
@@ -171,13 +179,93 @@ fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
             )]),
         },
     ]
+    .into_iter()
+    .map(Scenario::from)
+    .collect()
 }
 
-/// One check: the reports to send and the experience each branch should gain from them.
+/// Experience by branch.
+type Gains = BTreeMap<String, f64>;
+
+/// A check with the main pretend owner alone: the reports to send and the experience each branch
+/// should gain from them.
+struct Solo {
+    name: &'static str,
+    reports: Vec<String>,
+    expected: Gains,
+}
+
+/// One check: the reports to send and what each pretend owner online for it should gain. An owner
+/// expected to gain nothing must keep its fresh profile whole.
 struct Scenario {
     name: &'static str,
     reports: Vec<String>,
-    expected: BTreeMap<String, f64>,
+    expected: Vec<(u128, Gains)>,
+    /// An owner whose branch must reach a new level during the check.
+    levels_up: Option<(u128, String)>,
+}
+
+impl From<Solo> for Scenario {
+    fn from(solo: Solo) -> Self {
+        Scenario {
+            name: solo.name,
+            reports: solo.reports,
+            expected: vec![(glue::SELFTEST_PLAYER, solo.expected)],
+            levels_up: None,
+        }
+    }
+}
+
+/// The pretend owners a check put online. Dropping it takes every pretend owner offline again and
+/// forgets their per-player state, also when the check stops half-way.
+struct Online;
+
+impl Online {
+    fn attach(tree: &Tree, owners: impl IntoIterator<Item = u128>) -> Self {
+        for owner in owners {
+            glue::attach_test_player(tree, owner);
+            actions::start_test_visits(owner);
+        }
+        Online
+    }
+}
+
+impl Drop for Online {
+    fn drop(&mut self) {
+        for owner in glue::SELFTEST_PLAYERS {
+            glue::detach_test_player(owner);
+            actions::forget_player(owner);
+        }
+    }
+}
+
+/// Positions and entity ids of one run: each run moves to a fresh row and fresh ids.
+struct Spots {
+    run_no: u32,
+    row: i32,
+}
+
+impl Spots {
+    fn new(run_no: u32) -> Self {
+        Spots {
+            run_no,
+            row: AREA_Z - (run_no % RUN_ROWS) as i32 * ROW_STEP,
+        }
+    }
+
+    /// A block position `dx` along this run's row, as a report names it.
+    fn at(&self, dx: i32) -> String {
+        format!("{DIMENSION} {} {AREA_Y} {}", AREA_X + dx, self.row)
+    }
+
+    /// The chunk row this run's positions lie in.
+    fn chunk_z(&self) -> i32 {
+        self.row >> 4
+    }
+
+    fn entity(&self, n: u32) -> u32 {
+        ENTITY_BASE + self.run_no * ENTITIES_PER_RUN + n
+    }
 }
 
 fn run(game: &mut Game<'_>, filter: &str) {
@@ -194,8 +282,6 @@ fn run(game: &mut Game<'_>, filter: &str) {
     {
         outcome.record(scenario.name, check(game, tree, &scenario));
     }
-    glue::detach_test_player();
-    actions::forget_player(glue::SELFTEST_PLAYER);
     if TAGGED_SCENARIOS.iter().any(|name| name.contains(filter)) {
         // SoulsCraft's contract needs a real mob, and a fresh world with nobody on has no chunk
         // loaded: hold one and finish on the server ticks once it is in (`on_server_tick`).
@@ -281,8 +367,6 @@ pub fn on_server_tick(game: &mut Game<'_>) {
                 run.outcome.record(scenario.name, result);
             }
             game.native_remove_mob(DIMENSION, mob);
-            glue::detach_test_player();
-            actions::forget_player(glue::SELFTEST_PLAYER);
         }
         None if run.ticks < MAX_WAIT_TICKS => {
             run.ticks += 1;
@@ -315,11 +399,16 @@ fn finish(game: &mut Game<'_>, outcome: Outcome) {
     game.native_feedback(Text::literal(line));
 }
 
-/// Runs one scenario on a fresh profile and compares every branch that changed or should have.
+/// Runs one scenario with its owners online on fresh profiles and compares, for each owner, every
+/// branch that changed or should have. All pretend owners go offline again when it returns.
 fn check(game: &mut Game<'_>, tree: &Tree, scenario: &Scenario) -> Result<(), String> {
-    glue::attach_test_player(tree);
-    actions::start_test_visits(glue::SELFTEST_PLAYER);
-    let before = glue::test_player_xp();
+    let _online = Online::attach(tree, scenario.expected.iter().map(|(owner, _)| *owner));
+    let profile = |owner: u128| glue::test_player_profile(owner).unwrap_or_default();
+    let before: Vec<Profile> = scenario
+        .expected
+        .iter()
+        .map(|(owner, _)| profile(*owner))
+        .collect();
     for report in &scenario.reports {
         let mut ran = false;
         let line = format!("{} {report}", machine::COMMAND);
@@ -328,24 +417,74 @@ fn check(game: &mut Game<'_>, tree: &Tree, scenario: &Scenario) -> Result<(), St
             return Err(format!("the command was not taken: {line}"));
         }
     }
-    let after = glue::test_player_xp();
-    let mut branches: Vec<&String> = after.keys().chain(scenario.expected.keys()).collect();
-    branches.sort();
-    branches.dedup();
-    let wrong: Vec<String> = branches
-        .into_iter()
-        .filter_map(|branch| {
-            let gained = after.get(branch).copied().unwrap_or(0.0)
-                - before.get(branch).copied().unwrap_or(0.0);
-            let wanted = scenario.expected.get(branch).copied().unwrap_or(0.0);
-            ((gained - wanted).abs() > TOLERANCE)
-                .then(|| format!("{branch} gained {gained:.3}, expected {wanted:.3}"))
-        })
-        .collect();
+    let several = scenario.expected.len() > 1;
+    let mut wrong = Vec::new();
+    for ((owner, expected), before) in scenario.expected.iter().zip(&before) {
+        let who = if several {
+            format!("{}: ", owner_name(*owner))
+        } else {
+            String::new()
+        };
+        let Some(after) = glue::test_player_profile(*owner) else {
+            wrong.push(format!("{who}went offline"));
+            continue;
+        };
+        wrong.extend(
+            xp_mismatches(&before.xp, &after.xp, expected)
+                .into_iter()
+                .map(|line| format!("{who}{line}")),
+        );
+        if expected.is_empty() && after != *before {
+            wrong.push(format!("{who}the profile changed, though nothing was earned"));
+        }
+    }
+    if let Some((owner, branch)) = &scenario.levels_up {
+        let level = |p: &Profile| tree.branch_level(p, branch);
+        let was = level(&tree.new_profile());
+        let now = level(&profile(*owner));
+        if now <= was {
+            wrong.push(format!(
+                "{}: {branch} stayed at level {now}, expected a level-up",
+                owner_name(*owner)
+            ));
+        }
+    }
     if wrong.is_empty() {
         Ok(())
     } else {
         Err(wrong.join("; "))
+    }
+}
+
+/// The branches whose gain from `before` to `after` differs from `expected`.
+fn xp_mismatches(before: &Gains, after: &Gains, expected: &Gains) -> Vec<String> {
+    let mut branches: Vec<&String> = after.keys().chain(expected.keys()).collect();
+    branches.sort();
+    branches.dedup();
+    branches
+        .into_iter()
+        .filter_map(|branch| {
+            let gained = after.get(branch).copied().unwrap_or(0.0)
+                - before.get(branch).copied().unwrap_or(0.0);
+            let wanted = expected.get(branch).copied().unwrap_or(0.0);
+            ((gained - wanted).abs() > TOLERANCE)
+                .then(|| format!("{branch} gained {gained:.3}, expected {wanted:.3}"))
+        })
+        .collect()
+}
+
+/// How a failure names a pretend owner: by its place in `glue::SELFTEST_PLAYERS`.
+fn owner_name(owner: u128) -> String {
+    let index = glue::SELFTEST_PLAYERS
+        .iter()
+        .position(|p| *p == owner)
+        .unwrap_or(usize::MAX);
+    match index {
+        0 => "main owner".to_owned(),
+        1 => "owner A".to_owned(),
+        2 => "owner B".to_owned(),
+        3 => "owner C".to_owned(),
+        _ => format!("{owner:032x}"),
     }
 }
 
@@ -393,34 +532,52 @@ fn break_gain(tree: &Tree, block: &str, tool: machine::Tool) -> BTreeMap<String,
     gains(std::iter::once((branch.to_owned(), amount * share)).chain(cross))
 }
 
+/// What a machine's `action` done `times` over pays its owner.
+fn machine_gain(tree: &Tree, action: &str, times: f64) -> Gains {
+    let (branch, value) = base(tree, action);
+    gains([(branch, value * times * tree.machine_share)])
+}
+
+/// Adds several owners' worth of gains into one.
+fn sum(parts: impl IntoIterator<Item = Gains>) -> Gains {
+    gains(parts.into_iter().flatten())
+}
+
 fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
+    let spots = Spots::new(run_no);
+    let mut list: Vec<Scenario> = solo_scenarios(tree, &spots)
+        .into_iter()
+        .map(Scenario::from)
+        .collect();
+    list.extend(team_scenarios(tree, &spots));
+    list
+}
+
+fn solo_scenarios(tree: &Tree, spots: &Spots) -> Vec<Solo> {
     let owner = format!("{:032x}", glue::SELFTEST_PLAYER);
     let share = tree.machine_share;
-    let row = AREA_Z - (run_no % RUN_ROWS) as i32 * 4;
-    let at = |dx: i32| format!("{DIMENSION} {} {AREA_Y} {row}", AREA_X + dx);
-    let entity = |n: u32| ENTITY_BASE + run_no * 16 + n;
-    let one = |action: &str, times: f64| {
-        let (branch, value) = base(tree, action);
-        gains([(branch, value * times * share)])
-    };
+    let row = spots.row;
+    let at = |dx: i32| spots.at(dx);
+    let entity = |n: u32| spots.entity(n);
+    let one = |action: &str, times: f64| machine_gain(tree, action, times);
     let none = BTreeMap::new;
     let mut list = vec![
-        Scenario {
+        Solo {
             name: "smelt_ingots_pay_the_smith",
             reports: vec![format!("smelt {owner} minecraft:iron_ingot 4")],
             expected: one("act:ingot", 4.0),
         },
-        Scenario {
+        Solo {
             name: "smelt_of_other_items_pays_nothing",
             reports: vec![format!("smelt {owner} minecraft:redstone 4")],
             expected: none(),
         },
-        Scenario {
+        Solo {
             name: "craft_pays_per_craft",
             reports: vec![format!("craft {owner} minecraft:paper minecraft:paper 9 3")],
             expected: one("act:craft", 3.0),
         },
-        Scenario {
+        Solo {
             name: "break_of_natural_ore_pays_the_miner",
             reports: vec![format!(
                 "break {owner} {} minecraft:iron_ore pickaxe",
@@ -428,12 +585,12 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
             )],
             expected: break_gain(tree, "minecraft:iron_ore", machine::Tool::Pickaxe),
         },
-        Scenario {
+        Solo {
             name: "break_with_the_wrong_tool_pays_nothing",
             reports: vec![format!("break {owner} {} minecraft:iron_ore axe", at(1))],
             expected: none(),
         },
-        Scenario {
+        Solo {
             name: "placed_block_pays_only_after_its_mark_is_gone",
             reports: vec![
                 format!("place {} minecraft:iron_ore", at(2)),
@@ -442,18 +599,18 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
             ],
             expected: break_gain(tree, "minecraft:iron_ore", machine::Tool::Pickaxe),
         },
-        Scenario {
+        Solo {
             name: "turret_kill_pays_the_archer",
             reports: vec![format!("kill {owner} {} minecraft:zombie", entity(0))],
             expected: one("act:shot", health(tree, "minecraft:zombie")),
         },
-        Scenario {
+        Solo {
             // SoulsCraft's mobs are in the health table (agreed 2026-11-13): a brute is worth 60.
             name: "a_soulscraft_brute_pays_its_own_health",
             reports: vec![format!("kill {owner} {} soulscraft:brute", entity(5))],
             expected: one("act:shot", SOULSCRAFT_BRUTE_HEALTH),
         },
-        Scenario {
+        Solo {
             name: "player_shot_pays_in_full",
             reports: vec![format!("shot {owner} {} minecraft:zombie", entity(1))],
             expected: {
@@ -461,7 +618,7 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
                 gains([(branch, value * health(tree, "minecraft:zombie"))])
             },
         },
-        Scenario {
+        Solo {
             name: "slaughter_pays_husbandry_only",
             reports: vec![format!("slaughter {owner} {} minecraft:cow", entity(2))],
             expected: gains([(
@@ -469,12 +626,12 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
                 health(tree, "minecraft:cow") * share * tree.cross_share,
             )]),
         },
-        Scenario {
+        Solo {
             name: "slaughter_of_a_monster_pays_nothing",
             reports: vec![format!("slaughter {owner} {} minecraft:zombie", entity(3))],
             expected: none(),
         },
-        Scenario {
+        Solo {
             name: "fish_and_treasure_pay_the_fisher",
             reports: vec![
                 format!("fish {owner} minecraft:cod 2"),
@@ -488,7 +645,7 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
                 both
             },
         },
-        Scenario {
+        Solo {
             name: "a_milked_cow_rests",
             reports: vec![
                 format!("milk {owner} {}", entity(4)),
@@ -496,7 +653,7 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
             ],
             expected: one("act:milk", 1.0),
         },
-        Scenario {
+        Solo {
             name: "build_pays_once_and_marks_the_block",
             reports: vec![
                 format!("build {owner} {} minecraft:stone_bricks", at(3)),
@@ -505,7 +662,7 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
             ],
             expected: one("act:build", 1.0),
         },
-        Scenario {
+        Solo {
             name: "finds_pay_once",
             reports: vec![
                 format!("chunk {owner} {DIMENSION} 31 {}", row >> 4),
@@ -524,7 +681,7 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
                 all
             },
         },
-        Scenario {
+        Solo {
             name: "broken_reports_pay_nothing",
             reports: vec![
                 format!("brew {owner} 0"),
@@ -543,13 +700,139 @@ fn scenarios(tree: &Tree, run_no: u32) -> Vec<Scenario> {
         ("brew", "act:brew", 3.0),
         ("enchant", "act:enchant", 1.0),
     ] {
-        list.push(Scenario {
+        list.push(Solo {
             name: work_name(word),
             reports: vec![format!("{word} {owner} 2")],
             expected: one(action, 2.0 * per),
         });
     }
     list
+}
+
+/// The most ingots the level-up scenario may report at once, should the curve ever be that steep.
+const MAX_LEVEL_UP_INGOTS: u32 = 1_000_000;
+
+/// How many ingots a machine must smelt for its owner's smithing branch to reach level 1.
+fn ingots_to_level_up(tree: &Tree) -> u32 {
+    let (_, per_ingot) = base(tree, "act:ingot");
+    let per_ingot = per_ingot * tree.machine_share;
+    if per_ingot <= 0.0 {
+        return 1;
+    }
+    (1..MAX_LEVEL_UP_INGOTS)
+        .find(|n| tree.level_progress(per_ingot * f64::from(*n)).0 >= 1)
+        .unwrap_or(MAX_LEVEL_UP_INGOTS)
+}
+
+/// Several pretend owners earning at once. The main owner is online in each but sent nothing, so
+/// any experience that leaks to a bystander shows up too.
+fn team_scenarios(tree: &Tree, spots: &Spots) -> Vec<Scenario> {
+    let [main, a, b, c] = glue::SELFTEST_PLAYERS;
+    let id = |owner: u128| format!("{owner:032x}");
+    let (ida, idb, idc) = (id(a), id(b), id(c));
+    let at = |dx: i32| spots.at(dx);
+    let entity = |n: u32| spots.entity(n);
+    let chunk = format!("{DIMENSION} 32 {}", spots.chunk_z());
+    let one = |action: &str, times: f64| machine_gain(tree, action, times);
+    let none = BTreeMap::new;
+    let owners = |ga: Gains, gb: Gains, gc: Gains| vec![(main, none()), (a, ga), (b, gb), (c, gc)];
+    let finds = || sum(["act:chunk", "act:biome", "act:structure"].map(|act| one(act, 1.0)));
+    let ingots = ingots_to_level_up(tree);
+    vec![
+        Scenario {
+            name: "team_interleaved_reports_pay_each_owner_its_own",
+            reports: vec![
+                format!("smelt {ida} minecraft:iron_ingot 4"),
+                format!("craft {idb} minecraft:paper minecraft:paper 9 3"),
+                format!("fish {idc} minecraft:cod 2"),
+                format!("fish {ida} minecraft:cod 1"),
+                format!("smelt {idb} minecraft:iron_ingot 1"),
+                format!("kill {idc} {} minecraft:zombie", entity(8)),
+                format!("repair {ida} 2"),
+            ],
+            expected: owners(
+                sum([one("act:ingot", 4.0), one("act:fish", 1.0), one("act:repair", 2.0)]),
+                sum([one("act:craft", 3.0), one("act:ingot", 1.0)]),
+                sum([
+                    one("act:fish", 2.0),
+                    one("act:shot", health(tree, "minecraft:zombie")),
+                ]),
+            ),
+            levels_up: None,
+        },
+        Scenario {
+            // The day-long build rule is the spot's, not the builder's.
+            name: "team_a_built_spot_pays_no_other_owner_that_day",
+            reports: vec![
+                format!("build {ida} {} minecraft:stone_bricks", at(4)),
+                format!("build {idb} {} minecraft:stone_bricks", at(4)),
+                format!("build {idc} {} minecraft:stone_bricks", at(4)),
+                format!("break {idb} {} minecraft:stone_bricks pickaxe", at(4)),
+            ],
+            expected: owners(one("act:build", 1.0), none(), none()),
+            levels_up: None,
+        },
+        Scenario {
+            // A placed block's mark is the world's: whoever's machine breaks it first gets nothing
+            // and clears it, and the next break pays.
+            name: "team_a_placed_mark_blocks_every_owners_break_pay",
+            reports: vec![
+                format!("place {} minecraft:iron_ore", at(5)),
+                format!("break {idb} {} minecraft:iron_ore pickaxe", at(5)),
+                format!("break {ida} {} minecraft:iron_ore pickaxe", at(5)),
+            ],
+            expected: owners(
+                break_gain(tree, "minecraft:iron_ore", machine::Tool::Pickaxe),
+                none(),
+                none(),
+            ),
+            levels_up: None,
+        },
+        Scenario {
+            // A cow's rest is the cow's: milked by A, it pays B nothing; B's own cow pays B.
+            name: "team_a_milked_cow_rests_for_every_owner",
+            reports: vec![
+                format!("milk {ida} {}", entity(6)),
+                format!("milk {idb} {}", entity(6)),
+                format!("milk {idc} {}", entity(6)),
+                format!("milk {idb} {}", entity(7)),
+            ],
+            expected: owners(one("act:milk", 1.0), one("act:milk", 1.0), none()),
+            levels_up: None,
+        },
+        Scenario {
+            // Visited chunks and one-time finds are each player's own.
+            name: "team_each_owner_finds_the_same_chunk_and_biome_once",
+            reports: vec![
+                format!("chunk {ida} {chunk}"),
+                format!("chunk {idb} {chunk}"),
+                format!("chunk {ida} {chunk}"),
+                format!("chunk {idb} {chunk}"),
+                format!("biome {ida} minecraft:deep_dark"),
+                format!("biome {idb} minecraft:deep_dark"),
+                format!("biome {idb} minecraft:deep_dark"),
+                format!("biome {ida} minecraft:deep_dark"),
+                format!("structure {idb} minecraft:trial_chambers"),
+                format!("structure {ida} minecraft:trial_chambers"),
+            ],
+            expected: owners(finds(), finds(), none()),
+            levels_up: None,
+        },
+        Scenario {
+            name: "team_one_owners_level_up_leaves_the_others_alone",
+            reports: vec![
+                format!("smelt {idb} minecraft:iron_ingot 1"),
+                format!("smelt {ida} minecraft:iron_ingot {ingots}"),
+                format!("smelt {idb} minecraft:iron_ingot 1"),
+            ],
+            expected: owners(
+                one("act:ingot", f64::from(ingots)),
+                one("act:ingot", 2.0),
+                none(),
+            ),
+            levels_up: Some((a, base(tree, "act:ingot").0)),
+        },
+    ]
 }
 
 fn work_name(word: &str) -> &'static str {
