@@ -326,6 +326,7 @@ pub fn on_machine_break(
     block: &str,
     tool: crate::game::pct_machine_rules::Tool,
 ) {
+    actions::on_block_broken(game, owner, dimension, pos);
     let position = to_position(pos);
     let dir = glue::placed_dir(game);
     let was_placed = {
@@ -474,6 +475,9 @@ impl Drop for VeinGuard {
 pub fn on_destroy(game: &mut Game<'_>, pos: [i32; 3]) {
     let _timer = crate::game::pct_perf::time(crate::game::pct_perf::Probe::Destroy);
     forget_placed(game, pos);
+    if let Some(player) = game.native_acting_player().map(|acting| acting.uuid) {
+        actions::on_block_broken(game, player, game.native_dimension(), pos);
+    }
     if let Some(loaded) = glue::current_tree() {
         actions::remember_if_ripe(game, &loaded.tree, pos);
     }

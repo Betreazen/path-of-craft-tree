@@ -717,6 +717,33 @@ fn solo_scenarios(tree: &Tree, spots: &Spots) -> Vec<Solo> {
             expected: one("act:build", 1.0),
         },
         Solo {
+            // Breaking a block where building paid makes the breaker's next paying placement
+            // pay nothing: "place, break, place next to it" earns once (design.md, 14).
+            name: "build_after_breaking_a_paid_block_pays_nothing",
+            reports: vec![
+                format!("build {owner} {} minecraft:stone_bricks", at(6)),
+                format!("break {owner} {} minecraft:stone_bricks pickaxe", at(6)),
+                format!("build {owner} {} minecraft:stone_bricks", at(7)),
+                format!("build {owner} {} minecraft:oak_stairs", at(8)),
+            ],
+            expected: sum([one("act:build", 1.0), one("act:deco", 1.0)]),
+        },
+        Solo {
+            name: "brew_without_bottles_pays_three_a_brew",
+            reports: vec![format!("brew {owner} 2")],
+            expected: one("act:brew", 6.0),
+        },
+        Solo {
+            name: "brew_pays_the_bottles_it_names",
+            reports: vec![format!("brew {owner} 2 4")],
+            expected: one("act:brew", 4.0),
+        },
+        Solo {
+            name: "brew_with_impossible_bottles_pays_nothing",
+            reports: vec![format!("brew {owner} 2 7"), format!("brew {owner} 2 1")],
+            expected: none(),
+        },
+        Solo {
             name: "finds_pay_once",
             reports: vec![
                 format!("chunk {owner} {DIMENSION} 31 {}", row >> 4),
@@ -751,7 +778,6 @@ fn solo_scenarios(tree: &Tree, spots: &Spots) -> Vec<Solo> {
         ("shear", "act:shear", 1.0),
         ("honey", "act:honey", 1.0),
         ("brush", "act:brush", 1.0),
-        ("brew", "act:brew", 3.0),
         ("enchant", "act:enchant", 1.0),
     ] {
         list.push(Solo {
@@ -843,6 +869,19 @@ fn team_scenarios(tree: &Tree, spots: &Spots) -> Vec<Scenario> {
             levels_up: None,
         },
         Scenario {
+            // A broken paid block costs the breaker a placement, not the builder.
+            name: "team_a_broken_paid_block_costs_only_the_breaker",
+            reports: vec![
+                format!("build {ida} {} minecraft:stone_bricks", at(9)),
+                format!("break {idb} {} minecraft:stone_bricks pickaxe", at(9)),
+                format!("build {ida} {} minecraft:stone_bricks", at(10)),
+                format!("build {idb} {} minecraft:stone_bricks", at(11)),
+                format!("build {idb} {} minecraft:stone_bricks", at(12)),
+            ],
+            expected: owners(one("act:build", 2.0), one("act:build", 1.0), none()),
+            levels_up: None,
+        },
+        Scenario {
             // A cow's rest is the cow's: milked by A, it pays B nothing; B's own cow pays B.
             name: "team_a_milked_cow_rests_for_every_owner",
             reports: vec![
@@ -896,7 +935,6 @@ fn work_name(word: &str) -> &'static str {
         "shear" => "work_shear_pays",
         "honey" => "work_honey_pays",
         "brush" => "work_brush_pays",
-        "brew" => "work_brew_pays_three_bottles",
         _ => "work_enchant_pays_per_level",
     }
 }

@@ -128,6 +128,24 @@ file = "crates/horizon-client/src/game.rs"
 name = "pct_blueprints"
 source = "blueprints.rs"
 
+[[module]]
+id = "limits"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_limits"
+source = "limits.rs"
+
+[[module]]
+id = "pace_counter"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_pace_counter"
+source = "pace_counter.rs"
+
+[[module]]
+id = "pace_log"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_pace_log"
+source = "pace_log.rs"
+
 # Server half.
 [[injection]]
 id = "net_from_client"
@@ -504,6 +522,7 @@ hook_version = 1
 kind = "HEAD"
 helper = "brewing_complete.rs"
 bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "pos", ty = "[i32; 3]", value = "pos" },
 ]
 

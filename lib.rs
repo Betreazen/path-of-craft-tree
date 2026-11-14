@@ -11,10 +11,14 @@ mod fx_farm_rules;
 mod fx_gather_rules;
 #[path = "mixins/path_of_craft_tree/fx_roam_rules.rs"]
 mod fx_roam_rules;
+#[path = "mixins/path_of_craft_tree/limits.rs"]
+pub mod limits;
 #[path = "mixins/path_of_craft_tree/look.rs"]
 pub mod look;
 #[path = "mixins/path_of_craft_tree/machine_rules.rs"]
 pub mod machine_rules;
+#[path = "mixins/path_of_craft_tree/pace_counter.rs"]
+pub mod pace_counter;
 #[path = "mixins/path_of_craft_tree/placed.rs"]
 pub mod placed;
 #[path = "mixins/path_of_craft_tree/rules.rs"]
@@ -519,6 +523,36 @@ mod shipped_tree {
         assert_eq!(after.ranks["melee"][0], learned(&profile, "melee", &off));
         assert!(after.ranks["melee"][0] < summary.ranks["melee"][0]);
         assert_eq!(after.ranks["melee"][1], summary.ranks["melee"][1]);
+    }
+
+    #[test]
+    fn only_metal_gear_and_better_pays_the_smith() {
+        let tree = shipped();
+        for item in [
+            "iron_shovel",
+            "golden_sword",
+            "copper_pickaxe",
+            "chainmail_helmet",
+            "diamond_axe",
+            "netherite_boots",
+        ] {
+            let id = format!("minecraft:{item}");
+            assert!(
+                tree.has_suffix_in("gear_suffixes", &id),
+                "{item} pays nothing"
+            );
+        }
+        for item in [
+            "wooden_shovel",
+            "stone_sword",
+            "stone_axe",
+            "leather_helmet",
+            "turtle_helmet",
+            "wooden_pickaxe",
+        ] {
+            let id = format!("minecraft:{item}");
+            assert!(!tree.has_suffix_in("gear_suffixes", &id), "{item} pays");
+        }
     }
 
     #[test]

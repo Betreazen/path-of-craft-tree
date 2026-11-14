@@ -43,6 +43,12 @@ pub fn on_take(
         return;
     };
     fx::note_anvil_levels(player, levels);
-    actions::on_anvil(game, player, craft.right.as_ref());
+    actions::on_anvil(
+        game,
+        player,
+        craft.left.as_ref(),
+        craft.right.as_ref(),
+        &craft.output,
+    );
     enchant::on_anvil_post(game, player, craft);
 }

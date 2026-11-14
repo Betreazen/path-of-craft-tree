@@ -3,12 +3,13 @@ use crate::game::{
     Game,
     native_hooks::NativeLootDrops,
     pct_effects as effects, pct_glue as glue,
+    pct_limits::{self as limits, BrewPace, RebuildDebts},
     pct_machine_rules::Work,
     pct_mining::player_effects,
     pct_rules::{Profile, Tree},
     pct_visits::Visits,
 };
-use horizon_client::items::ItemStack;
+use horizon_client::{containers::BlockEntity, items::ItemStack};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
@@ -22,7 +23,8 @@ const REBUILD_COOLDOWN: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_REMEMBERED_BUILDS: usize = 200_000;
 const HIT_WINDOW: Duration = Duration::from_secs(1);
 const MAX_HIT_XP_PER_WINDOW: f64 = 20.0;
-const BOTTLES_PER_BREW: f64 = 3.0;
+/// The bottle slots of a brewing stand, before its ingredient and fuel.
+const BOTTLE_SLOTS: usize = 3;
 const DEFAULT_MOB_HEALTH: f64 = 20.0;
 const FISH_CAUGHT: i32 = 2;
 const CREATIVE: i32 = 1;
@@ -54,7 +56,10 @@ type Chunk = (String, i32, i32);
 struct State {
     fishing: HashMap<u128, Instant>,
     brewers: HashMap<[i32; 3], u128>,
-    finished_brews: Vec<[i32; 3]>,
+    /// Finished brews: the stand and how many bottles it filled.
+    finished_brews: Vec<([i32; 3], u32)>,
+    brew_pace: BrewPace,
+    rebuild_debts: RebuildDebts,
     hits: Vec<(i32, f64)>,
     hit_budget: HashMap<u128, (Instant, f64)>,
     last_hit_ranged: HashMap<i32, bool>,
@@ -324,10 +329,15 @@ pub fn on_machine_work(game: &mut Game<'_>, owner: u128, work: Work, times: u32)
         Work::Shear => ("act:shear", times),
         Work::Honey => ("act:honey", times),
         Work::Brush => ("act:brush", times),
-        Work::Brew => ("act:brew", times * BOTTLES_PER_BREW),
         Work::Enchant => ("act:enchant", times),
     };
     earn_for_owner(game, owner, action, times);
+}
+
+/// A machine's brews filled `bottles` bottles: paid per bottle, as a player's stand. Machines
+/// have no brew pace: each stand of theirs is a real one, as each of their furnaces.
+pub fn on_machine_brew(game: &mut Game<'_>, owner: u128, bottles: u32) {
+    earn_for_owner(game, owner, "act:brew", f64::from(bottles));
 }
 
 /// A machine built `block` at `pos`: marked as placed, and paid where nobody built in the last
@@ -345,6 +355,7 @@ pub fn on_machine_build(
     };
     if let Some(action) = build_action(&loaded.tree, block)
         && first_build_here(dimension, pos)
+        && !owes_rebuild(owner)
     {
         earn_for_owner(game, owner, action, 1.0);
     }
@@ -521,7 +532,15 @@ pub fn on_item_crafted(game: &mut Game<'_>, player: u128, recipe: &str, stack: &
     }
 }
 
-pub fn on_anvil(game: &mut Game<'_>, player: u128, right: Option<&ItemStack>) {
+/// An anvil take of `output` from `left` and `right`: a book merge pays the enchanter, a take
+/// without a book pays the smith only when it repaired the item (a rename pays nothing).
+pub fn on_anvil(
+    game: &mut Game<'_>,
+    player: u128,
+    left: Option<&ItemStack>,
+    right: Option<&ItemStack>,
+    output: &ItemStack,
+) {
     let Some(loaded) = glue::current_tree() else {
         return;
     };
@@ -536,7 +555,10 @@ pub fn on_anvil(game: &mut Game<'_>, player: u128, right: Option<&ItemStack>) {
             crate::game::pct_fx_craft::take_anvil_levels(player),
             Some(("smithing", base_of(tree, "act:repair"))),
         );
-    } else {
+    } else if limits::is_anvil_repair(
+        left.map(|stack| (&*stack.item, stack.damage)),
+        (&*output.item, output.damage),
+    ) {
         earn(game, tree, player, "act:repair", 1.0, None);
     }
 }
@@ -567,8 +589,21 @@ pub fn on_container_open(player: u128, menu: &str, pos: Option<[i32; 3]>) {
     }
 }
 
-pub fn on_brewing_complete(pos: [i32; 3]) {
-    state().finished_brews.push(pos);
+/// Called as the stand finishes, its bottles already brewed, in the level the stand is in: the
+/// filled bottle slots are what the brew pays for.
+pub fn on_brewing_complete(game: &Game<'_>, pos: [i32; 3]) {
+    let filled = match game.world.block_entities.get(&(pos[0], pos[1], pos[2])) {
+        Some(BlockEntity::Brewing(stand)) => stand.items[..BOTTLE_SLOTS]
+            .iter()
+            .flatten()
+            .filter(|stack| stack.count > 0)
+            .count(),
+        _ => 0,
+    };
+    let bottles = limits::bottles_paid(filled);
+    if bottles > 0 {
+        state().finished_brews.push((pos, bottles));
+    }
 }
 
 // Combat.
@@ -697,6 +732,28 @@ fn first_build_here(dimension: &str, pos: [i32; 3]) -> bool {
     true
 }
 
+/// Whether `player` broke a block where building paid in the last day and has not yet given a
+/// placement back for it; this placement is then the one that pays nothing.
+fn owes_rebuild(player: u128) -> bool {
+    state().rebuild_debts.take(player, Instant::now())
+}
+
+/// `player` (or their machine) broke the block at `pos`. Where building paid in the last day, the
+/// player's next placement that would pay does not: "place, break, place next to it" pays once.
+pub fn on_block_broken(game: &Game<'_>, player: u128, dimension: &str, pos: [i32; 3]) {
+    if is_creative(game, player) {
+        return;
+    }
+    let mut state = state();
+    let paid_here = state
+        .built
+        .get(&(dimension.to_owned(), pos))
+        .is_some_and(|at| at.elapsed() < REBUILD_COOLDOWN);
+    if paid_here {
+        state.rebuild_debts.note_break(player, Instant::now());
+    }
+}
+
 pub fn on_block_placed(game: &mut Game<'_>, pos: [i32; 3], block: &str) {
     let (Some(player), Some(loaded)) = (acting_uuid(game), glue::current_tree()) else {
         return;
@@ -705,7 +762,7 @@ pub fn on_block_placed(game: &mut Game<'_>, pos: [i32; 3], block: &str) {
     let Some(action) = build_action(tree, block) else {
         return;
     };
-    if first_build_here(game.native_dimension(), pos) {
+    if first_build_here(game.native_dimension(), pos) && !owes_rebuild(player) {
         earn(game, tree, player, action, 1.0, None);
     }
 }
@@ -892,6 +949,12 @@ pub fn forget_player(player: u128) {
     state.fishing.remove(&player);
     state.hit_budget.remove(&player);
     state.game_modes.remove(&player);
+    // A real player keeps rebuild debts and brew pace over a relog, so logging out is no way
+    // around them; the self-test's pretend owners start every check clean.
+    if glue::is_test_player(player) {
+        state.rebuild_debts.forget(player);
+        state.brew_pace.forget(player);
+    }
 }
 
 fn enter_chunk(player: u128, chunk: &Chunk) -> Option<bool> {
@@ -969,13 +1032,21 @@ fn drain_brews(game: &mut Game<'_>, tree: &Tree) {
     let brews = {
         let mut state = state();
         let positions = std::mem::take(&mut state.finished_brews);
-        positions
-            .into_iter()
-            .filter_map(|pos| state.brewers.get(&pos).copied())
-            .collect::<Vec<_>>()
+        let now = Instant::now();
+        let mut paid = Vec::new();
+        // At most one paid brew per player per stand's brewing time, however many stands.
+        for (pos, bottles) in positions {
+            let Some(player) = state.brewers.get(&pos).copied() else {
+                continue;
+            };
+            if state.brew_pace.may_pay(player, now) {
+                paid.push((player, bottles));
+            }
+        }
+        paid
     };
-    for player in brews {
-        earn(game, tree, player, "act:brew", BOTTLES_PER_BREW, None);
+    for (player, bottles) in brews {
+        earn(game, tree, player, "act:brew", f64::from(bottles), None);
     }
 }
 
