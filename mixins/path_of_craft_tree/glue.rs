@@ -269,7 +269,7 @@ fn apply_attributes(game: &mut Game<'_>, tree: &Tree, player: u128, profile: &Pr
 }
 
 fn save_player(game: &Game<'_>, player: u128) {
-    if player == SELFTEST_PLAYER {
+    if is_test_player(player) {
         return;
     }
     let snapshot = {
@@ -600,12 +600,28 @@ pub fn take_placed_falling(player: u128, block: &str) -> bool {
     true
 }
 
-/// The pretend owner the self-test (selftest.rs) credits. It is online only inside one console
-/// command: nothing is sent to it and its profile is never saved.
-pub const SELFTEST_PLAYER: u128 = 0x7e57_7e57_0000_4000_8000_0000_0000_0001;
+/// The pretend owners the self-test (selftest.rs) credits: the first is the owner of most
+/// scenarios, the others join it where several players earn at once. They are online only inside
+/// one console command: nothing is sent to them and their profiles are never saved.
+pub const SELFTEST_PLAYERS: [u128; 4] = [
+    0x7e57_7e57_0000_4000_8000_0000_0000_0001,
+    0x7e57_7e57_0000_4000_8000_0000_0000_0002,
+    0x7e57_7e57_0000_4000_8000_0000_0000_0003,
+    0x7e57_7e57_0000_4000_8000_0000_0000_0004,
+];
+pub const SELFTEST_PLAYER: u128 = SELFTEST_PLAYERS[0];
 
-/// Self-test only: puts the pretend owner online with a fresh profile, replacing any earlier one.
-pub fn attach_test_player(tree: &Tree) {
+/// Whether `player` is one of the self-test's pretend owners.
+pub fn is_test_player(player: u128) -> bool {
+    SELFTEST_PLAYERS.contains(&player)
+}
+
+/// Self-test only: puts pretend owner `player` online with a fresh profile, replacing any earlier
+/// one. Any other player is left alone.
+pub fn attach_test_player(tree: &Tree, player: u128) {
+    if !is_test_player(player) {
+        return;
+    }
     let profile = tree.new_profile();
     let entry = Entry {
         effects: Arc::new(tree.effects(&profile)),
@@ -617,21 +633,25 @@ pub fn attach_test_player(tree: &Tree) {
         summary_due: true,
         summary_written: None,
     };
-    server().players.insert(SELFTEST_PLAYER, entry);
+    server().players.insert(player, entry);
 }
 
-/// Self-test only: the pretend owner's experience by branch.
-pub fn test_player_xp() -> BTreeMap<String, f64> {
+/// Self-test only: pretend owner `player`'s profile, while they are online.
+pub fn test_player_profile(player: u128) -> Option<Profile> {
+    if !is_test_player(player) {
+        return None;
+    }
     server()
         .players
-        .get(&SELFTEST_PLAYER)
-        .map(|entry| entry.profile.xp.clone())
-        .unwrap_or_default()
+        .get(&player)
+        .map(|entry| entry.profile.clone())
 }
 
-/// Self-test only: takes the pretend owner offline again, without saving anything.
-pub fn detach_test_player() {
-    server().players.remove(&SELFTEST_PLAYER);
+/// Self-test only: takes pretend owner `player` offline again, without saving anything.
+pub fn detach_test_player(player: u128) {
+    if is_test_player(player) {
+        server().players.remove(&player);
+    }
 }
 
 /// Grants experience and tells the player about it, at most a few times a second.
@@ -681,7 +701,7 @@ pub fn grant(
             None
         }
     };
-    if player == SELFTEST_PLAYER {
+    if is_test_player(player) {
         return;
     }
     if let Some((xp, encoded, leveled, level)) = report {
@@ -737,7 +757,7 @@ fn write_summaries(game: &mut Game<'_>) {
         state
             .players
             .iter_mut()
-            .filter(|(player, entry)| entry.summary_due && **player != SELFTEST_PLAYER)
+            .filter(|(player, entry)| entry.summary_due && !is_test_player(**player))
             .filter_map(|(player, entry)| {
                 let summary = loaded.tree.combat_summary(&entry.profile);
                 let json = serde_json::to_string(&summary).ok()?;
