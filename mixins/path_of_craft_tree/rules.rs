@@ -260,6 +260,11 @@ pub struct Profile {
     /// Big nodes the player switched off; their upgrades stop working with them.
     #[serde(default)]
     pub disabled: Allocated,
+    /// Sand and gravel the player placed and has not broken since, by block: a falling block lands
+    /// away from its mark, so each one cancels one later reward. Kept with the profile so a
+    /// restart does not forget them. The client is never sent this.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub placed_falling: BTreeMap<String, u32>,
 }
 
 /// What the client is sent of a profile: everything but the one-time rewards, which only the
@@ -811,6 +816,7 @@ impl Tree {
             general_xp: saved.general_xp,
             seen: saved.seen.clone(),
             disabled: Allocated::new(),
+            placed_falling: saved.placed_falling.clone(),
         };
         // Kept up to date rank by rank, instead of recounting every rank before each one.
         let mut points = self.points(&kept);

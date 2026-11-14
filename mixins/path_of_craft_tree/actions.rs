@@ -245,6 +245,7 @@ pub fn on_machine_craft(
 /// A machine (a turret, a guard) killed mob `entity`: the owner earns as for their own ranged
 /// kill, with the same cut for mobs from spawners.
 pub fn on_machine_kill(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str) {
+    let kind = &crate::game::pct_fx_roam_combat::mob_kind(game, entity, kind);
     let Some(loaded) = glue::current_tree() else {
         return;
     };
@@ -267,6 +268,7 @@ pub fn on_machine_kill(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str
 /// of that animal pays, and nothing for melee, so a feeder and a slaughterer cannot farm a combat
 /// branch. Mobs that are not farm animals pay nothing.
 pub fn on_machine_slaughter(game: &mut Game<'_>, owner: u128, entity: u32, kind: &str) {
+    let kind = &crate::game::pct_fx_roam_combat::mob_kind(game, entity, kind);
     let Some(loaded) = glue::current_tree() else {
         return;
     };
@@ -572,6 +574,7 @@ pub fn on_brewing_complete(pos: [i32; 3]) {
 // Combat.
 
 pub fn on_mob_killed(game: &mut Game<'_>, player: u128, entity: u32, kind: &str) {
+    let kind = &crate::game::pct_fx_roam_combat::mob_kind(game, entity, kind);
     let Some(loaded) = glue::current_tree() else {
         return;
     };
@@ -618,6 +621,7 @@ pub fn on_incoming_damage(entity: i32, kind: &str, damage_type: &str, amount: &m
 }
 
 fn earn_mob_shot(game: &mut Game<'_>, player: u128, entity: u32, kind: &str) {
+    let kind = &crate::game::pct_fx_roam_combat::mob_kind(game, entity, kind);
     let Some(loaded) = glue::current_tree() else {
         return;
     };

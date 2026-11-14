@@ -649,6 +649,16 @@ pub fn mark_spawner_mobs(ids: &HashMap<u32, u32>) {
     state.spawner_mobs.extend(ids.values().copied());
 }
 
+/// The dying mob's own kind as the game knows it (a content mod's `soulscraft:revenant`), which a
+/// kill hook or a machine's report may name by the vanilla template it is built on
+/// (`minecraft:zombie`); `reported` when the mob can no longer be reached.
+pub fn mob_kind(game: &Game<'_>, entity: u32, reported: &str) -> String {
+    game.native_entity(entity)
+        .and_then(|mob| game.native_entity_kind(mob))
+        .filter(|kind| !kind.is_empty())
+        .unwrap_or_else(|| reported.to_owned())
+}
+
 /// What share of a kill's experience this mob pays: a cut for mobs from spawners, times what its
 /// `pct.xpNNN` tag asks for (a mob another mod made stronger). A dying mob keeps its tags until it
 /// is removed, so every kill hook and a machine's report in the same tick still read them.
@@ -681,6 +691,7 @@ pub fn on_kill_loot(game: &mut Game<'_>, context: &NativeLootDrops<'_>) {
         return;
     };
     let entity = entity as u32;
+    let kind = &mob_kind(game, entity, kind);
     let Some(shooter) = state().far_shots.remove(&entity) else {
         return;
     };

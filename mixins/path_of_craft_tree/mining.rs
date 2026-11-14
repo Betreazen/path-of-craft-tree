@@ -10,10 +10,10 @@ use crate::game::{
 };
 use horizon_client::items::ItemStack;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     path::PathBuf,
     sync::{
-        Arc, LazyLock, Mutex, MutexGuard, PoisonError,
+        Arc, Mutex, PoisonError,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{SystemTime, UNIX_EPOCH},
@@ -45,8 +45,6 @@ const TICKS_PER_SECOND: f64 = 20.0;
 /// Set while the mod breaks a vein, so those breaks do not start more veins.
 pub static BREAKING_VEIN: AtomicBool = AtomicBool::new(false);
 static RANDOM: AtomicU64 = AtomicU64::new(0);
-static PLACED_FALLING: LazyLock<Mutex<HashMap<(u128, String), u32>>> =
-    LazyLock::new(Mutex::default);
 
 /// A number in 0..1 from a small xorshift generator; gameplay chances need nothing stronger.
 pub fn random() -> f64 {
@@ -243,18 +241,11 @@ pub fn on_machine_break(
     award_break(game, tree, owner, &branch, amount * share, cross);
 }
 
-fn placed_falling() -> MutexGuard<'static, HashMap<(u128, String), u32>> {
-    PLACED_FALLING
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-}
-
 /// A falling block lands away from its mark, so each one placed cancels one later reward instead.
+/// The count lives in the player's profile, so it survives a restart.
 fn count_placed_falling(game: &Game<'_>, block: &str) {
     if let Some(acting) = game.native_acting_player() {
-        *placed_falling()
-            .entry((acting.uuid, block.to_owned()))
-            .or_default() += 1;
+        glue::count_placed_falling(acting.uuid, block);
     }
 }
 
@@ -267,14 +258,7 @@ fn take_placed_falling(player: u128, table: &str) -> bool {
     else {
         return false;
     };
-    let mut counts = placed_falling();
-    match counts.get_mut(&(player, block)) {
-        Some(count) if *count > 0 => {
-            *count -= 1;
-            true
-        }
-        _ => false,
-    }
+    glue::take_placed_falling(player, &block)
 }
 
 /// Forgets the placed mark of the block being broken and remembers it for the loot hook.

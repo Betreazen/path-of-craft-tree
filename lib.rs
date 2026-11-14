@@ -17,10 +17,10 @@ pub mod machine_rules;
 pub mod placed;
 #[path = "mixins/path_of_craft_tree/rules.rs"]
 pub mod rules;
-#[path = "mixins/path_of_craft_tree/visits.rs"]
-pub mod visits;
 #[path = "mixins/path_of_craft_tree/view.rs"]
 pub mod view;
+#[path = "mixins/path_of_craft_tree/visits.rs"]
+pub mod visits;
 
 /// The paths the mod's modules use inside the game.
 pub mod game {
@@ -122,6 +122,7 @@ mod shipped_tree {
         kept.xp = saved.xp.clone();
         kept.general_xp = saved.general_xp;
         kept.seen = saved.seen.clone();
+        kept.placed_falling = saved.placed_falling.clone();
         let mut frontier = std::collections::VecDeque::from([tree.start]);
         while let Some(id) = frontier.pop_front() {
             let mut links = tree.nodes[&id].links.clone();
@@ -317,6 +318,24 @@ mod shipped_tree {
                 node.id
             );
         }
+    }
+
+    #[test]
+    fn placed_sand_and_gravel_stay_in_the_saved_profile_only() {
+        let tree = shipped();
+        let mut profile = grown(&tree, 4000.0);
+        profile
+            .placed_falling
+            .insert("minecraft:sand".to_owned(), 3);
+        let saved = serde_json::to_vec(&profile).unwrap();
+        let (read, _) = crate::rules::Profile::from_saved(&saved).unwrap();
+        assert_eq!(read.placed_falling["minecraft:sand"], 3);
+        assert_eq!(tree.sanitize(&read).placed_falling, read.placed_falling);
+        assert_eq!(tree.respec(&read).placed_falling, read.placed_falling);
+        let client = serde_json::to_string(&read.for_client()).unwrap();
+        assert!(!client.contains("placed_falling"), "{client}");
+        let empty = serde_json::to_string(&tree.new_profile()).unwrap();
+        assert!(!empty.contains("placed_falling"), "{empty}");
     }
 
     #[test]

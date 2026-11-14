@@ -570,6 +570,36 @@ pub fn mark_seen(player: u128, key: String) -> bool {
     first
 }
 
+/// The player placed one more `block` of sand or gravel (mining.rs): kept in their profile.
+pub fn count_placed_falling(player: u128, block: &str) {
+    if let Some(entry) = server().players.get_mut(&player) {
+        *entry
+            .profile
+            .placed_falling
+            .entry(block.to_owned())
+            .or_default() += 1;
+        entry.dirty = true;
+    }
+}
+
+/// Whether a broken `block` of sand or gravel is paid for by one the player placed earlier, which
+/// it then uses up.
+pub fn take_placed_falling(player: u128, block: &str) -> bool {
+    let mut state = server();
+    let Some(entry) = state.players.get_mut(&player) else {
+        return false;
+    };
+    let Some(count) = entry.profile.placed_falling.get_mut(block) else {
+        return false;
+    };
+    *count -= 1;
+    if *count == 0 {
+        entry.profile.placed_falling.remove(block);
+    }
+    entry.dirty = true;
+    true
+}
+
 /// The pretend owner the self-test (selftest.rs) credits. It is online only inside one console
 /// command: nothing is sent to it and its profile is never saved.
 pub const SELFTEST_PLAYER: u128 = 0x7e57_7e57_0000_4000_8000_0000_0000_0001;
