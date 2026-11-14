@@ -22,6 +22,10 @@ criterion = { version = "0.8", default-features = false, features = ["cargo_benc
 name = "rules"
 harness = false
 
+[[bench]]
+name = "window"
+harness = false
+
 # Benchmarks keep line tables so a profiler can name the hot functions.
 [profile.bench]
 debug = "line-tables-only"

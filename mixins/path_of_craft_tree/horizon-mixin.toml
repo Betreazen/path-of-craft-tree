@@ -103,6 +103,50 @@ id = "paint"
 file = "crates/horizon-client/src/game.rs"
 name = "pct_paint"
 source = "paint.rs"
+# The tree window's search, planner and statistics, the bar on the screen, and the server's
+# sums of where experience came from (docs/design.md, section 10).
+[[module]]
+id = "find"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_find"
+source = "find.rs"
+
+[[module]]
+id = "plan"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_plan"
+source = "plan.rs"
+
+[[module]]
+id = "session"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_session"
+source = "session.rs"
+
+[[module]]
+id = "window"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_window"
+source = "window.rs"
+
+[[module]]
+id = "window_draw"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_window_draw"
+source = "window_draw.rs"
+
+[[module]]
+id = "hud_bar"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_hud_bar"
+source = "hud_bar.rs"
+
+[[module]]
+id = "gains"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_gains"
+source = "gains.rs"
+
 
 [[module]]
 id = "actions"
@@ -362,6 +406,94 @@ bindings = [
   { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
   { name = "scroll", ty = "[f64; 2]", value = "scroll" },
   { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+# Typing in the tree window: the search box, the jumps between matches, copy and paste
+# (window.rs). A mod screen has no text box, so the window keeps the text itself.
+[[injection]]
+id = "window_screen_key"
+hook = "screen_key_pressed_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "window_screen_key.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "modifiers", ty = "u32", value = "modifiers" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "window_screen_char"
+hook = "screen_char_typed_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "window_screen_char.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "c", ty = "char", value = "c" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+# The clipboard, the planner's requests and the session's statistics need the game itself.
+[[injection]]
+id = "window_frame"
+hook = "frame"
+hook_version = 1
+kind = "HEAD"
+helper = "window_frame.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+# The experience bar's key (keys.rs), outside the window.
+[[injection]]
+id = "window_key"
+hook = "key"
+hook_version = 1
+kind = "HEAD"
+helper = "window_key.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+# Where experience came from, for the statistics page (gains.rs sends it).
+[[injection]]
+id = "window_net"
+hook = "net_from_server"
+hook_version = 1
+kind = "HEAD"
+helper = "window_net.rs"
+bindings = [
+  { name = "channel", ty = "&str", value = "channel" },
+  { name = "data", ty = "&[u8]", value = "data" },
+]
+
+# The experience bar on the screen (hud_bar.rs). By target, as other mods of the pack draw on
+# the HUD: the hook needs no trait mod then.
+[[injection]]
+id = "hud_bar"
+target = "horizon_client::game::native_hooks::Game<'_>::native_hud"
+kind = "HEAD"
+helper = "hud_bar_draw.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+]
+
+# Server half: the sums of where experience came from leave every few seconds.
+[[injection]]
+id = "gains_tick"
+hook = "server_tick"
+hook_version = 1
+kind = "HEAD"
+helper = "gains_tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "phase", ty = "crate::mod_api::ServerTickPhase", value = "phase" },
 ]
 
 [[injection]]

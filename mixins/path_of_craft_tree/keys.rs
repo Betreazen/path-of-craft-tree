@@ -13,10 +13,11 @@ pub enum Key {
     Home,
     PocketBench,
     Sharpener,
+    XpBar,
 }
 
 /// Each key: its name in the game's key list, its label in Options and its default.
-const KEYS: [(Key, &str, &str, &str); 7] = [
+const KEYS: [(Key, &str, &str, &str); 8] = [
     (Key::Tree, "tree", "Открыть дерево", "key.keyboard.k"),
     (Key::OreSense, "ore_sense", "Рудный нюх", "key.keyboard.v"),
     (
@@ -39,6 +40,13 @@ const KEYS: [(Key, &str, &str, &str); 7] = [
         "key.keyboard.y",
     ),
     (Key::Sharpener, "sharpener", "Точильщик", "key.keyboard.u"),
+    // Off by default: the bar is optional, and the window has its own switch.
+    (
+        Key::XpBar,
+        "xp_bar",
+        "Полоса опыта ветви",
+        "key.keyboard.unknown",
+    ),
 ];
 
 const TITLE: &str = "Path-of-craft-tree";
