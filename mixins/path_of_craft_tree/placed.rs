@@ -158,10 +158,10 @@ impl Placed {
 
     /// Takes in a region read in the background; `None` when the read failed, which leaves the
     /// region to the synchronous read. A region loaded meanwhile, because a block in it was
-    /// needed first, is kept: its marks are at least as new as the file was. True when merged.
+    /// needed first, is kept: its marks are at least as new as the file was. A read nobody claimed
+    /// here (asked for before the world closed) is dropped. True when merged.
     pub fn merge(&mut self, key: RegionKey, bytes: Option<Vec<u8>>) -> bool {
-        self.reading.remove(&key);
-        if self.regions.contains_key(&key) {
+        if !self.reading.remove(&key) || self.regions.contains_key(&key) {
             return false;
         }
         let Some(bytes) = bytes else {
@@ -378,6 +378,19 @@ mod tests {
         assert!(!placed.is_loaded(&key));
         let file = saved_bytes(&[(3, 64, 3)]);
         assert!(placed.contains(OVERWORLD, (3, 64, 3), |_| Some(file.clone())));
+    }
+
+    #[test]
+    fn a_read_asked_before_the_world_closed_is_dropped() {
+        let mut placed = Placed::default();
+        let key = RegionKey::of(OVERWORLD, (3, 64, 3));
+        assert!(placed.claim(&key));
+        // The world stops and the same one opens again while the read is still in flight: the
+        // file it read may predate the stop's save.
+        placed = Placed::default();
+        assert!(!placed.merge(key.clone(), Some(saved_bytes(&[(3, 64, 3)]))));
+        assert!(!placed.is_loaded(&key));
+        assert!(!placed.contains(OVERWORLD, (3, 64, 3), |_| None));
     }
 
     #[test]

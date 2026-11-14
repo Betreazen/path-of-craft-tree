@@ -330,9 +330,24 @@ pub fn write_in_folder(path: &Path, bytes: &[u8]) -> Result<(), String> {
     write_atomic(path, bytes)
 }
 
-/// An orderly server stop: nothing earned since the last periodic save is lost.
+/// An orderly server stop: nothing earned since the last periodic save is lost. In single player
+/// the game process lives on and may open another world, so the old world's players and marks
+/// are forgotten once saved; otherwise they would be paid from, and saved into, the next world.
 pub fn on_server_stopping(game: &mut Game<'_>) {
+    crate::game::pct_mining::apply_piston_moves(game);
     save_everything(game);
+    forget_world();
+}
+
+fn forget_world() {
+    {
+        let mut state = server();
+        state.players.clear();
+        state.awaiting_hello.clear();
+        state.placed = placed::Placed::default();
+        state.just_broken.clear();
+    }
+    crate::game::pct_actions::forget_world();
 }
 
 /// The folder a region's placed blocks are read from.

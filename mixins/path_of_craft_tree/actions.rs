@@ -879,6 +879,12 @@ pub fn start_test_visits(player: u128) {
     state().visited.insert(player, Visits::default());
 }
 
+/// The world closed: cows, build spots, brewing stands and players of the old one are forgotten,
+/// so a world opened next in the same game (single player) starts clean.
+pub fn forget_world() {
+    *state() = State::default();
+}
+
 pub fn forget_player(player: u128) {
     let mut state = state();
     state.visited.remove(&player);
