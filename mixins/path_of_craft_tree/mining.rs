@@ -119,6 +119,82 @@ fn mark_placed(game: &Game<'_>, dimension: &str, pos: [i32; 3], block: &str) {
     }
 }
 
+/// A piston's move, kept from the level's hook until the server tick can reach the marks' files.
+struct PistonMove {
+    dimension: &'static str,
+    direction: [i32; 3],
+    pushed: Vec<[i32; 3]>,
+    destroyed: Vec<[i32; 3]>,
+}
+
+static PISTON_MOVES: Mutex<Vec<PistonMove>> = Mutex::new(Vec::new());
+
+/// A piston is about to push or pull the blocks at `pushed` one step `direction` and destroy those
+/// at `destroyed`. A placed block keeps its mark where it lands, so a piston can no longer turn a
+/// placed ore back into one that pays. Applied on the server tick (`apply_piston_moves`).
+pub fn on_piston_move(
+    dimension: &'static str,
+    direction: [i32; 3],
+    pushed: Vec<[i32; 3]>,
+    destroyed: Vec<[i32; 3]>,
+) {
+    if pushed.is_empty() && destroyed.is_empty() {
+        return;
+    }
+    PISTON_MOVES
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .push(PistonMove {
+            dimension,
+            direction,
+            pushed,
+            destroyed,
+        });
+}
+
+/// Moves the marks of the blocks pistons moved since the last tick, and drops those of the blocks
+/// they destroyed. Blocks move together: every mark is lifted before any is set down.
+pub fn apply_piston_moves(game: &Game<'_>) {
+    let moves = std::mem::take(&mut *PISTON_MOVES.lock().unwrap_or_else(PoisonError::into_inner));
+    if moves.is_empty() {
+        return;
+    }
+    let dir = glue::placed_dir(game);
+    let mut state = glue::server();
+    for step in moves {
+        let mut lifted = Vec::new();
+        for pos in &step.pushed {
+            let position = to_position(*pos);
+            if state
+                .placed
+                .contains(step.dimension, position, read_region(dir.clone()))
+            {
+                state
+                    .placed
+                    .remove(step.dimension, position, read_region(dir.clone()));
+                lifted.push(*pos);
+            }
+        }
+        for pos in &step.destroyed {
+            state
+                .placed
+                .remove(step.dimension, to_position(*pos), read_region(dir.clone()));
+        }
+        for pos in lifted {
+            let landed = [
+                pos[0] + step.direction[0],
+                pos[1] + step.direction[1],
+                pos[2] + step.direction[2],
+            ];
+            state.placed.add(
+                step.dimension,
+                to_position(landed),
+                read_region(dir.clone()),
+            );
+        }
+    }
+}
+
 /// A machine put `block` at `pos` (a block placer, a growing ore vein): it pays nothing when
 /// broken, as a block a player placed.
 pub fn on_machine_place(game: &Game<'_>, dimension: &str, pos: [i32; 3], block: &str) {

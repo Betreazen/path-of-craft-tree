@@ -2,7 +2,7 @@
 # The tree and all balance numbers are data: data/tree.json, written by the example generator.
 [mod]
 id = "path_of_craft_tree"
-version = "0.4.9"
+version = "0.4.10"
 
 # The commit that adds native_player_break_block, which the Vein node needs.
 [compatibility]
@@ -1824,4 +1824,19 @@ target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
 helper = "mods_listed.rs"
 bindings = [
   { name = "mods", ty = "&mut Vec<crate::mod_api::NativeMod>", value = "&mut *mods" },
+]
+
+# Pistons carry a placed block's mark with it (mining.rs on_piston_move). The level's hook only
+# queues the move; the server tick applies it to the marks.
+[[injection]]
+id = "piston_move"
+hook = "piston_move"
+hook_version = 1
+kind = "HEAD"
+helper = "piston_move.rs"
+bindings = [
+  { name = "dimension", ty = "horizon_world::level::Dimension", value = "dimension" },
+  { name = "direction", ty = "[i32; 3]", value = "direction" },
+  { name = "push", ty = "&[horizon_core::position::BlockPos]", value = "push" },
+  { name = "destroy", ty = "&[horizon_core::position::BlockPos]", value = "destroy" },
 ]
