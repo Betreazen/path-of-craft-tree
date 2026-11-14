@@ -241,13 +241,14 @@ fn models(tree: &Tree) -> Vec<Model> {
         m("cooking", Farm, vec![src("act:cook", 1.0, crops(1000.0, 10.0) * potatoes_net)], vec![]),
         // One stand busy 60% of the time: a brew every 20 s pays for 3 bottles.
         m("alchemy", Focused, vec![src("act:brew", 3.0, 3600.0 * 0.6 / 20.0)], vec![("act:brew_first", 40.0)]),
-        // Four stands kept 80% busy; one nether wart a brew (the rules always pay 3 bottles).
-        m("alchemy", Farm, vec![src("act:brew", 3.0, 4.0 * 3600.0 * 0.8 / 20.0)], vec![]),
+        // Four stands kept 80% busy, but a player is paid at most one brew per 20 s: one full stand.
+        m("alchemy", Farm, vec![src("act:brew", 3.0, 3600.0 / 20.0)], vec![]),
         // Assumption: 1500 blocks an hour on a real build, a quarter of them stairs and slabs.
         m("building", Focused, vec![src("act:build", 1.0, 1125.0), src("act:deco", 1.0, 375.0)], vec![]),
-        // Place stairs, break them with an axe, place one block over: 4 + 7 ticks, 70% of the hour.
-        m("building", Farm, vec![src("act:deco", 1.0,
-            TICKS_PER_HOUR / (4.0 + break_ticks(2.0, DIAMOND_EFF5)) * 0.7)], vec![]),
+        // A broken paid block makes the next placement unpaid, so "place, break, place next to it"
+        // pays once. The fastest left: cobblestone from a generator (netherite Eff V, Haste II),
+        // every block put on a new spot; 35% of the hour mining, 35% placing at the same rate.
+        m("building", Farm, vec![src("act:build", 1.0, blocks(2.0, NETHERITE_EFF5_HASTE2, 0.35))], vec![]),
         // Assumption: 2000 cobblestone into furnaces and 400 logs into planks and chests an hour.
         m("crafting", Focused, vec![src("act:craft", 8.0, 2000.0 / 8.0), src("act:craft", 1.0, 400.0),
             src("act:craft", 8.0, 1600.0 / 8.0)], vec![("act:craft_first", 400.0)]),
@@ -256,8 +257,9 @@ fn models(tree: &Tree) -> Vec<Model> {
         // Assumption: 150 copper and 60 iron ores an hour in caves; copper drops 2..5 raw.
         m("smithing", Focused, vec![src("act:ingot", 1.0, 150.0 * 3.5 + 60.0), src("act:gear", 1.0, 8.0),
             src("act:repair", 1.0, 4.0)], vec![("act:upgrade", 9.0)]),
-        // Wooden shovels (1 log makes 2): every "_shovel" counts; ~3000 crafted an hour.
-        m("smithing", Farm, vec![src("act:gear", 1.0, 3000.0)], vec![]),
+        // Only metal gear pays. Assumption: a mid-size gold farm, 9000 nuggets (1000 ingots) an hour,
+        // all into golden shovels (one ingot each). An iron farm's ~400 ingots give 400 shovels.
+        m("smithing", Farm, vec![src("act:gear", 1.0, 1000.0)], vec![]),
         // The points spent at level 30 in slot 3; 6 book merges of ~5 levels an hour.
         m("enchanting", Focused, vec![src("act:enchant", 3.0, mc_points / points_slot3),
             src("act:book", 5.0, 6.0)], vec![("act:enchant_first", 40.0)]),
