@@ -520,6 +520,33 @@ mod shipped_tree {
     }
 
     #[test]
+    fn only_metal_gear_and_better_pays_the_smith() {
+        let tree = shipped();
+        for item in [
+            "iron_shovel",
+            "golden_sword",
+            "copper_pickaxe",
+            "chainmail_helmet",
+            "diamond_axe",
+            "netherite_boots",
+        ] {
+            let id = format!("minecraft:{item}");
+            assert!(tree.has_suffix_in("gear_suffixes", &id), "{item} pays nothing");
+        }
+        for item in [
+            "wooden_shovel",
+            "stone_sword",
+            "stone_axe",
+            "leather_helmet",
+            "turtle_helmet",
+            "wooden_pickaxe",
+        ] {
+            let id = format!("minecraft:{item}");
+            assert!(!tree.has_suffix_in("gear_suffixes", &id), "{item} pays");
+        }
+    }
+
+    #[test]
     fn every_branch_earns_experience() {
         let tree = shipped();
         for (id, branch) in &tree.branches {
