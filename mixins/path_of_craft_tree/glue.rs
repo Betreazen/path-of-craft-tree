@@ -24,6 +24,8 @@ const HELLO: &str = "path_of_craft_tree:hello";
 const ALLOCATE: &str = "path_of_craft_tree:allocate";
 const TOGGLE: &str = "path_of_craft_tree:toggle";
 const RESPEC: &str = "path_of_craft_tree:respec";
+/// A mastery title to show: a branch id, or nothing for the automatic one.
+const TITLE: &str = "path_of_craft_tree:title";
 const TREE: &str = "path_of_craft_tree:tree";
 const STATE: &str = "path_of_craft_tree:state";
 const CONFIG_FILE: &str = "path_of_craft_tree.json";
@@ -83,6 +85,8 @@ pub struct Client {
     pub toggles: Vec<u16>,
     pub respec_requested: bool,
     pub respec_armed: bool,
+    /// A mastery title the window asks for: a branch id, or empty for the automatic one.
+    pub title_request: Option<String>,
     owe_hello: bool,
 }
 
@@ -565,12 +569,29 @@ fn on_respec(game: &mut Game<'_>, player: u128) {
     replace_profile(game, player, &loaded, loaded.tree.respec(&profile));
 }
 
+/// The player picked the mastery title to show; a branch without a mastery rank is refused.
+fn on_title(game: &mut Game<'_>, player: u128, data: &[u8]) {
+    let (Some(loaded), Some(profile)) = (current_tree(), current_profile(player)) else {
+        return;
+    };
+    let Ok(branch) = std::str::from_utf8(data) else {
+        log::warn!("path_of_craft_tree: malformed title request from {player:032x}");
+        return;
+    };
+    let wanted = (!branch.is_empty()).then_some(branch);
+    match loaded.tree.choose_title(&profile, wanted) {
+        Some(next) => replace_profile(game, player, &loaded, next),
+        None => log::info!("path_of_craft_tree: {player:032x} refused title {branch}"),
+    }
+}
+
 pub fn on_client_message(game: &mut Game<'_>, player: u128, channel: &str, data: &[u8]) {
     match channel {
         HELLO => on_hello(game, player, data),
         ALLOCATE => on_allocate(game, player, data),
         TOGGLE => on_toggle(game, player, data),
         RESPEC => on_respec(game, player),
+        TITLE => on_title(game, player, data),
         _ => {}
     }
 }
@@ -689,10 +710,10 @@ pub fn grant(
         let before = entry.profile.xp.clone();
         change(tree, &mut entry.profile);
         let level = tree.branch_level(&entry.profile, branch);
-        let leveled = level
-            > tree
-                .level_progress(before.get(branch).copied().unwrap_or(0.0))
-                .0;
+        let before_xp = before.get(branch).copied().unwrap_or(0.0);
+        let leveled = level > tree.level_progress(before_xp).0;
+        let mastery = tree.mastery_rank(&entry.profile, branch);
+        let mastered = mastery > tree.mastery_progress(before_xp).0;
         // The level bonus of every branch is part of the effects, so a new level of any branch refreshes them.
         if tree.levels_changed(&before, &entry.profile.xp) {
             entry.effects = Arc::new(tree.effects(&entry.profile));
@@ -704,14 +725,15 @@ pub fn grant(
             entry.unreported_xp = 0.0;
         }
         entry.unreported_xp += gained;
-        if entry.feedback_at.elapsed() >= FEEDBACK_EVERY || leveled {
+        if entry.feedback_at.elapsed() >= FEEDBACK_EVERY || leveled || mastered {
             entry.feedback_at = Instant::now();
             // Encoded here rather than copied out: the message is all that leaves the lock.
             Some((
                 std::mem::take(&mut entry.unreported_xp),
                 serde_json::to_vec(&entry.profile.for_client()),
-                leveled,
+                leveled || mastered,
                 level,
+                mastery,
             ))
         } else {
             None
@@ -720,17 +742,35 @@ pub fn grant(
     if is_test_player(player) {
         return;
     }
-    if let Some((xp, encoded, leveled, level)) = report {
+    if let Some((xp, encoded, leveled, level, mastery)) = report {
         let name = tree
             .branches
             .get(branch)
             .map_or(branch, |b| b.name.as_str());
-        let line = format!("+{xp:.1} опыта · {name} {level}");
-        game.native_action_bar(player, Text::literal(line));
+        game.native_action_bar(
+            player,
+            Text::literal(feedback_line(tree, branch, name, xp, level, mastery)),
+        );
         send_encoded_state(game, player, encoded);
         if leveled {
             save_player(game, player);
         }
+    }
+}
+
+/// The line over the hotbar after experience: the branch's level, and past the last level its
+/// mastery rank with the title it gives.
+fn feedback_line(
+    tree: &Tree,
+    branch: &str,
+    name: &str,
+    xp: f64,
+    level: u32,
+    mastery: u32,
+) -> String {
+    match tree.mastery_title(branch, mastery) {
+        Some(title) => format!("+{xp:.1} опыта · {name} {level} · мастерство {mastery}: {title}"),
+        None => format!("+{xp:.1} опыта · {name} {level}"),
     }
 }
 
@@ -926,6 +966,12 @@ pub fn on_frame(game: &mut Game<'_>) {
         if let Err(error) = game.native_net_send_to_server(RESPEC, &[]) {
             log::warn!("path_of_craft_tree: reset not sent: {error}");
         }
+    }
+    let title = client().title_request.take();
+    if let Some(branch) = title
+        && let Err(error) = game.native_net_send_to_server(TITLE, branch.as_bytes())
+    {
+        log::warn!("path_of_craft_tree: title not sent: {error}");
     }
     crate::game::pct_art::on_frame(game);
 }

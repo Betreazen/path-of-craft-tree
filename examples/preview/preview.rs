@@ -153,12 +153,24 @@ fn read(nodes: &[Value]) -> (Vec<String>, Vec<Branch>, Vec<Ring>) {
     (order, branches, rings)
 }
 
+/// Whether the generator added the node after the numbering saved profiles know.
+fn is_added(node: &Value) -> bool {
+    node["added"] == json!(true)
+}
+
 /// Merges each run of upgrades that give exactly the same effects into one node with ranks.
+/// Added boosters already carry their ranks and are never merged, so no older node changes.
 fn merge_ranks(upgrades: &[Value]) -> Vec<Value> {
     let mut runs: Vec<Vec<&Value>> = Vec::new();
     for upgrade in upgrades {
         match runs.last_mut() {
-            Some(run) if run[0]["effects"] == upgrade["effects"] => run.push(upgrade),
+            Some(run)
+                if !is_added(run[0])
+                    && !is_added(upgrade)
+                    && run[0]["effects"] == upgrade["effects"] =>
+            {
+                run.push(upgrade)
+            }
             _ => runs.push(vec![upgrade]),
         }
     }
@@ -228,22 +240,62 @@ fn coordinate(value: f64) -> Value {
     json!((value * 10.0).round() / 10.0)
 }
 
+/// Numbers the nodes in the order they are written, except added ones: those take the ids after
+/// every older node, so the ids saved profiles refer to keep meaning the same nodes.
 struct Writer {
-    nodes: Vec<Value>,
+    nodes: HashMap<u64, Value>,
+    next: u64,
+    next_added: u64,
 }
 
 impl Writer {
     fn push(&mut self, node: &Value, at: geometry::P, links: Vec<u64>, icon: String) -> u64 {
-        let id = self.nodes.len() as u64;
+        let counter = if is_added(node) {
+            &mut self.next_added
+        } else {
+            &mut self.next
+        };
+        let id = *counter;
+        *counter += 1;
         let mut node = node.clone();
+        if let Some(fields) = node.as_object_mut() {
+            fields.remove("added");
+        }
         node["id"] = json!(id);
         node["x"] = coordinate(at.x);
         node["y"] = coordinate(at.y);
         node["links"] = json!(links);
         node["icon"] = json!(icon);
-        self.nodes.push(node);
+        self.nodes.insert(id, node);
         id
     }
+
+    /// The nodes in id order; the ids must run without a gap.
+    fn finish(mut self) -> Vec<Value> {
+        let all: Vec<Value> = (0..self.nodes.len() as u64)
+            .map(|id| self.nodes.remove(&id).expect("ids without a gap"))
+            .collect();
+        assert!(self.nodes.is_empty(), "ids without a gap");
+        all
+    }
+}
+
+/// How many nodes are not added: the start, the branches' older nodes and the bridges.
+fn older_count(branches: &[Branch], rings: &[Ring]) -> u64 {
+    let in_branches: usize = branches
+        .iter()
+        .map(|branch| {
+            let spine = branch.spine.iter().filter(|n| !is_added(n)).count();
+            let clusters: usize = branch
+                .clusters
+                .iter()
+                .map(|c| 1 + c.upgrades.iter().filter(|n| !is_added(n)).count())
+                .sum();
+            spine + clusters
+        })
+        .sum();
+    let bridges = rings.iter().filter(|ring| ring.bridge.is_some()).count();
+    (1 + in_branches + bridges) as u64
 }
 
 fn small_icon(node: &Value) -> String {
@@ -257,7 +309,11 @@ fn rebuild(start: &Value, branches: &[Branch], rings: &[Ring]) -> Vec<Value> {
     let layout = layout::lay_out(&branch_shapes, &ring_shapes);
     let mut start = start.clone();
     start["icon"] = json!("start");
-    let mut writer = Writer { nodes: vec![start] };
+    let mut writer = Writer {
+        nodes: HashMap::from([(0, start)]),
+        next: 1,
+        next_added: older_count(branches, rings),
+    };
     let mut spine_ids: Vec<Vec<u64>> = Vec::new();
     for (b, branch) in branches.iter().enumerate() {
         let mut ids = Vec::with_capacity(branch.spine.len());
@@ -287,11 +343,13 @@ fn rebuild(start: &Value, branches: &[Branch], rings: &[Ring]) -> Vec<Value> {
             (Some(bridge), Some(at)) => {
                 writer.push(bridge, *at, vec![from, to], small_icon(bridge));
             }
-            _ => writer.nodes[from as usize]["links"]
-                .as_array_mut()
+            _ => writer
+                .nodes
+                .get_mut(&from)
+                .and_then(|node| node["links"].as_array_mut())
                 .expect("links")
                 .push(json!(to)),
         }
     }
-    writer.nodes
+    writer.finish()
 }

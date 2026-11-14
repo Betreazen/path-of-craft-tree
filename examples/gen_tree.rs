@@ -5,6 +5,10 @@
 // branch colours. With `-- --preview` the same tree also goes to design/out for the HTML preview.
 use serde_json::{Map, Value, json};
 
+#[path = "nodes/boosters.rs"]
+mod boosters;
+#[path = "nodes/mastery.rs"]
+mod mastery;
 #[path = "preview/preview.rs"]
 mod preview;
 
@@ -980,6 +984,17 @@ impl Builder {
                 }),
             );
         }
+        let added = added_boosters(branch, &big.name);
+        for (index, node) in added.into_iter().enumerate() {
+            let step = big.upgrades.len() + index + 1;
+            let (x, y) = ray.at(radius + UPGRADE_STEP * step as f32, side);
+            let mut node = node;
+            node["x"] = json!(x);
+            node["y"] = json!(y);
+            node["icon"] = json!(big.icon);
+            node["links"] = json!([previous]);
+            previous = self.add(branch, node);
+        }
     }
 
     /// Adds one branch and returns the ids of its spine, from the centre outwards.
@@ -1213,7 +1228,9 @@ fn branches_json() -> Value {
     let map: Map<String, Value> = BRANCHES
         .iter()
         .map(|meta| {
-            let mut branch = json!({"name": meta.name, "xp": branch_xp(meta.id)});
+            let mut branch = json!({
+                "name": meta.name, "xp": branch_xp(meta.id), "legend": mastery::legend(meta.id),
+            });
             if let Some(suffix) = meta.tool_suffix {
                 branch["tool_suffix"] = json!(suffix);
             }
@@ -2415,6 +2432,38 @@ fn apply_wired(branch: &str, bigs: &mut [Big]) {
     }
 }
 
+/// The boosters added after `big`'s last upgrade, as upgrade nodes marked `added` so preview.rs
+/// numbers them after the nodes saved profiles know and never merges them into older ranks.
+fn added_boosters(branch: &str, big: &str) -> Vec<Value> {
+    boosters::ADDED_UPGRADES
+        .iter()
+        .filter(|(b, name, _)| *b == branch && *name == big)
+        .flat_map(|(_, _, list)| list.iter())
+        .map(|(name, ranks, effects)| {
+            assert!(!ranks.is_empty() && !effects.is_empty(), "{branch}: {name}");
+            let mut node = json!({
+                "name": name, "kind": "upgrade", "description": ranks[0],
+                "effects": effects_json(effects), "todo": false, "added": true,
+            });
+            if ranks.len() > 1 {
+                node["ranks"] = json!(ranks.len());
+                node["rank_descriptions"] = json!(ranks);
+            }
+            node
+        })
+        .collect()
+}
+
+/// Every added booster names a big node of its branch; a typo would silently drop it.
+fn check_added(bigs_by_branch: &[(&str, Vec<String>)]) {
+    for (branch, big, _) in boosters::ADDED_UPGRADES {
+        let known = bigs_by_branch
+            .iter()
+            .any(|(b, names)| b == branch && names.iter().any(|n| n == big));
+        assert!(known, "{branch}: no big node {big} for the added boosters");
+    }
+}
+
 fn main() -> std::io::Result<()> {
     let spec = std::fs::read_to_string(SPEC)?;
     let start = json!({
@@ -2426,6 +2475,7 @@ fn main() -> std::io::Result<()> {
         next: 1,
     };
     let mut spines = Vec::with_capacity(BRANCHES.len());
+    let mut bigs_by_branch = Vec::with_capacity(BRANCHES.len());
     for (index, meta) in BRANCHES.iter().enumerate() {
         let mut bigs = if meta.id == "mining" {
             miner_bigs()
@@ -2441,7 +2491,9 @@ fn main() -> std::io::Result<()> {
             bigs.len()
         );
         spines.push(builder.add_branch(meta, &bigs, &Ray::new(index)));
+        bigs_by_branch.push((meta.id, bigs.iter().map(|big| big.name.clone()).collect()));
     }
+    check_added(&bigs_by_branch);
     for index in 0..spines.len() {
         let next = (index + 1) % spines.len();
         for ring in RING_LINKS {
@@ -2466,6 +2518,7 @@ fn main() -> std::io::Result<()> {
         "level_bonus": level_bonus(),
         "lists": lists(),
         "numbers": numbers(),
+        "mastery": mastery::mastery(),
         "nodes": builder.nodes,
     });
     let tree = preview::convert(&tree);
