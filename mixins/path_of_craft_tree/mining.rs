@@ -4,8 +4,8 @@ use crate::game::{
     native_hooks::NativeLootDrops,
     native_player_state::NativeEffect,
     pct_actions as actions, pct_effects as effects, pct_fx_farm as farm, pct_fx_gather as gather,
-    pct_glue as glue,
-    pct_placed::{Position, RegionKey},
+    pct_glue as glue, pct_perf as perf,
+    pct_placed::{Position, Prefetcher, RegionKey},
     pct_rules::{Effects, Tree},
 };
 use horizon_client::items::ItemStack;
@@ -41,6 +41,9 @@ const NEIGHBOURS: [[i32; 3]; 6] = [
     [0, 0, -1],
 ];
 const TICKS_PER_SECOND: f64 = 20.0;
+/// How far around a player the marks' regions are read ahead, in blocks: beyond the simulation
+/// distance of a usual server, so the machines and pistons near a player find them loaded too.
+const PREFETCH_MARGIN: i32 = 160;
 
 /// Set while the mod breaks a vein, so those breaks do not start more veins.
 pub static BREAKING_VEIN: AtomicBool = AtomicBool::new(false);
@@ -70,8 +73,91 @@ pub fn effect(effects: &Effects, key: &str) -> f64 {
     effects.get(key).copied().unwrap_or(0.0)
 }
 
-fn read_region(dir: Option<PathBuf>) -> impl FnOnce(&RegionKey) -> Option<Vec<u8>> {
-    move |key| std::fs::read(dir?.join(key.file_name())).ok()
+/// Reads a region's marks on the server thread: the fallback when the read ahead has not
+/// brought the region in yet. Timed (`region_read`), so its count shows how often that happens.
+pub fn read_region(dir: Option<PathBuf>) -> impl FnOnce(&RegionKey) -> Option<Vec<u8>> {
+    move |key| {
+        let _timer = perf::time(perf::Probe::RegionRead);
+        std::fs::read(dir?.join(key.file_name())).ok()
+    }
+}
+
+/// The thread that reads regions ahead of the players.
+enum ReadAhead {
+    NotStarted,
+    Running(Prefetcher),
+    /// The thread could not start or stopped: the synchronous read does all the work.
+    Off,
+}
+
+static READ_AHEAD: Mutex<ReadAhead> = Mutex::new(ReadAhead::NotStarted);
+
+/// Asks for the regions around a player that are not loaded yet, read off the server thread.
+/// Called every player tick: with every region near the player loaded it only looks them up.
+pub fn prefetch_near(game: &Game<'_>, dimension: &str, position: [f64; 3]) {
+    let at = (position[0].floor() as i32, 0, position[2].floor() as i32);
+    let claimed: Vec<RegionKey> = {
+        let mut state = glue::server();
+        RegionKey::near(dimension, at, PREFETCH_MARGIN)
+            .into_iter()
+            .filter(|key| state.placed.claim(key))
+            .collect()
+    };
+    if claimed.is_empty() {
+        return;
+    }
+    let dir = glue::placed_dir(game);
+    let refused: Vec<RegionKey> = {
+        let mut read_ahead = READ_AHEAD.lock().unwrap_or_else(PoisonError::into_inner);
+        if matches!(*read_ahead, ReadAhead::NotStarted) {
+            *read_ahead = Prefetcher::start().map_or(ReadAhead::Off, ReadAhead::Running);
+            if matches!(*read_ahead, ReadAhead::Off) {
+                log::warn!("path_of_craft_tree: placed marks are read on the server thread only");
+            }
+        }
+        let mut refused = Vec::new();
+        for key in claimed {
+            let asked = match (&*read_ahead, &dir) {
+                (ReadAhead::Running(prefetcher), Some(dir)) => {
+                    prefetcher.ask(dir.clone(), key.clone())
+                }
+                _ => false,
+            };
+            if !asked {
+                refused.push(key);
+            }
+        }
+        if matches!(*read_ahead, ReadAhead::Running(_)) && dir.is_some() && !refused.is_empty() {
+            *read_ahead = ReadAhead::Off;
+        }
+        refused
+    };
+    // Without the thread or the world's folder, the synchronous read stays in charge.
+    let mut state = glue::server();
+    for key in refused {
+        state.placed.merge(key, None);
+    }
+}
+
+/// Takes in the regions read ahead since the last tick. A read from another world's folder (the
+/// world changed meanwhile) is dropped, and so is one of a region loaded synchronously meanwhile.
+pub fn merge_prefetched(game: &Game<'_>) {
+    let fetched = match &*READ_AHEAD.lock().unwrap_or_else(PoisonError::into_inner) {
+        ReadAhead::Running(prefetcher) => prefetcher.finished(),
+        ReadAhead::NotStarted | ReadAhead::Off => return,
+    };
+    if fetched.is_empty() {
+        return;
+    }
+    let dir = glue::placed_dir(game);
+    let mut state = glue::server();
+    for read in fetched {
+        perf::add(perf::Probe::RegionPrefetch, read.took.as_nanos() as u64);
+        let same_world = dir.as_ref() == Some(&read.dir);
+        state
+            .placed
+            .merge(read.key, read.bytes.filter(|_| same_world));
+    }
 }
 
 fn to_position(pos: [i32; 3]) -> Position {

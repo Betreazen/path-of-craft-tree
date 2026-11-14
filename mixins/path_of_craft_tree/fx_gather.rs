@@ -4,7 +4,6 @@ use crate::game::{
     native_hooks::NativeLootDrops,
     pct_fx_gather_rules as rules, pct_glue as glue,
     pct_mining::{chance, effect, player_effects},
-    pct_placed::RegionKey,
     pct_rules::{Effects, Tree},
 };
 use horizon_client::{items::ItemStack, mod_api::NativeServerPlayer};
@@ -101,8 +100,7 @@ impl Drop for ChainGuard {
 }
 
 pub fn is_placed(game: &Game<'_>, pos: [i32; 3]) -> bool {
-    let dir = glue::placed_dir(game);
-    let reader = move |key: &RegionKey| std::fs::read(dir?.join(key.file_name())).ok();
+    let reader = crate::game::pct_mining::read_region(glue::placed_dir(game));
     glue::server()
         .placed
         .contains(game.native_dimension(), (pos[0], pos[1], pos[2]), reader)
