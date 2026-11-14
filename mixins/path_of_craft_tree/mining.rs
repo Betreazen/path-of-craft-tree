@@ -279,6 +279,33 @@ pub fn apply_piston_moves(game: &Game<'_>) {
     }
 }
 
+/// Blocks explosions removed since the last tick, until the server tick can reach the marks' files.
+static EXPLODED: Mutex<Vec<(&'static str, [i32; 3])>> = Mutex::new(Vec::new());
+
+/// An explosion is about to turn the block at `pos` to air. A placed block loses its mark, so the
+/// marks of blown-up builds do not pile up. Applied on the server tick (`apply_explosions`).
+pub fn on_explosion_block(dimension: &'static str, pos: [i32; 3]) {
+    EXPLODED
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .push((dimension, pos));
+}
+
+/// Drops the marks of the blocks explosions removed since the last tick.
+pub fn apply_explosions(game: &Game<'_>) {
+    let exploded = std::mem::take(&mut *EXPLODED.lock().unwrap_or_else(PoisonError::into_inner));
+    if exploded.is_empty() {
+        return;
+    }
+    let dir = glue::placed_dir(game);
+    let mut state = glue::server();
+    for (dimension, pos) in exploded {
+        state
+            .placed
+            .remove(dimension, to_position(pos), read_region(dir.clone()));
+    }
+}
+
 /// A machine put `block` at `pos` (a block placer, a growing ore vein): it pays nothing when
 /// broken, as a block a player placed.
 pub fn on_machine_place(game: &Game<'_>, dimension: &str, pos: [i32; 3], block: &str) {

@@ -23,7 +23,5 @@ fn path_of_craft_tree_fx_gather_retrieve(game: &mut crate::game::Game<'_>) {
     };
     mob.velocity = pull_hooked(mob.velocity, at, owner);
     mob.needs_sync = true;
-    if damage > 0.0 {
-        mob.health = (mob.health - damage).max(0.5);
-    }
+    crate::game::pct_fx_gather_fish::harpoon_hit(game, id, damage);
 }

@@ -49,7 +49,8 @@ struct State {
     anvil_levels: HashMap<u128, i32>,
     gifts: HashMap<u128, Vec<(ItemStack, u8)>>,
     book_gifts: HashMap<u128, Vec<ItemStack>>,
-    lines: HashMap<u128, Vec<String>>,
+    /// A line for the player's action bar, the latest one wins.
+    bars: HashMap<u128, String>,
     sharpen: HashSet<u128>,
 }
 
@@ -117,8 +118,8 @@ pub fn give_for_book_later(player: u128, stack: ItemStack) {
     state().book_gifts.entry(player).or_default().push(stack);
 }
 
-pub fn tell_later(player: u128, line: String) {
-    state().lines.entry(player).or_default().push(line);
+pub fn show_later(player: u128, line: String) {
+    state().bars.insert(player, line);
 }
 
 pub fn queue_sharpen(player: u128) {
@@ -145,11 +146,11 @@ fn due_gifts(state: &mut State, player: u128) -> Vec<ItemStack> {
 }
 
 fn deliver_later(game: &mut Game<'_>, player: u128) {
-    let (gifts, books, lines, sharpen) = {
+    let (gifts, books, bar, sharpen) = {
         let mut state = state();
         if state.gifts.is_empty()
             && state.book_gifts.is_empty()
-            && state.lines.is_empty()
+            && state.bars.is_empty()
             && state.sharpen.is_empty()
         {
             return;
@@ -157,7 +158,7 @@ fn deliver_later(game: &mut Game<'_>, player: u128) {
         (
             due_gifts(&mut state, player),
             state.book_gifts.remove(&player).unwrap_or_default(),
-            state.lines.remove(&player).unwrap_or_default(),
+            state.bars.remove(&player),
             state.sharpen.remove(&player),
         )
     };
@@ -169,8 +170,8 @@ fn deliver_later(game: &mut Game<'_>, player: u128) {
             game.give_or_drop(stack);
         }
     }
-    for line in lines {
-        game.native_tell(player, Text::literal(line));
+    if let Some(line) = bar {
+        game.native_action_bar(player, Text::literal(line));
     }
     if sharpen {
         crate::game::pct_fx_craft_items::sharpen_held(game, player);

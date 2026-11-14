@@ -320,6 +320,7 @@ fn save_everything(game: &Game<'_>) {
         crate::game::pct_actions::save_chunks(game, player);
     }
     save_placed(game);
+    crate::game::pct_fx_craft_build::save_blueprints(game);
 }
 
 /// Writes `bytes` to `path` atomically, creating its folder first.
@@ -335,6 +336,7 @@ pub fn write_in_folder(path: &Path, bytes: &[u8]) -> Result<(), String> {
 /// are forgotten once saved; otherwise they would be paid from, and saved into, the next world.
 pub fn on_server_stopping(game: &mut Game<'_>) {
     crate::game::pct_mining::apply_piston_moves(game);
+    crate::game::pct_mining::apply_explosions(game);
     save_everything(game);
     forget_world();
 }
@@ -348,6 +350,7 @@ fn forget_world() {
         state.just_broken.clear();
     }
     crate::game::pct_actions::forget_world();
+    crate::game::pct_fx_craft_build::forget_world();
 }
 
 /// The folder a region's placed blocks are read from.
@@ -399,6 +402,7 @@ pub fn on_login(game: &mut Game<'_>, player: u128) {
 pub fn on_logout(game: &mut Game<'_>, player: u128) {
     save_player(game, player);
     save_placed(game);
+    crate::game::pct_fx_craft_build::save_blueprints(game);
     crate::game::pct_actions::save_chunks(game, player);
     crate::game::pct_actions::forget_player(player);
     let mut state = server();
@@ -824,6 +828,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
     crate::game::pct_selftest::on_server_tick(game);
     crate::game::pct_mining::merge_prefetched(game);
     crate::game::pct_mining::apply_piston_moves(game);
+    crate::game::pct_mining::apply_explosions(game);
     write_summaries(game);
     if ticks % SAVE_EVERY_TICKS == 0 {
         save_everything(game);

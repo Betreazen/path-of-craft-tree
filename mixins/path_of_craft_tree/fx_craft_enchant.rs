@@ -165,17 +165,15 @@ fn apply_pending(game: &Game<'_>, player: u128, menu: &mut Menu) {
     menu.enchant_changed = false;
 }
 
-fn offer_line(game: &Game<'_>, seed: i32, slot: usize, cost: i32, item: &str) -> String {
+fn offer_names(game: &Game<'_>, seed: i32, slot: usize, cost: i32, item: &str) -> Vec<String> {
     let data = game.stations();
     let list = stations::enchantment_list(&data.enchantments, game.items(), seed, slot, cost, item);
-    let names: Vec<String> = list
-        .iter()
+    list.iter()
         .map(|(id, level)| data.enchantments.full_name(id, *level).0)
-        .collect();
-    format!("Вариант {}: {}", slot + 1, names.join(", "))
+        .collect()
 }
 
-/// Tells the player every enchantment of each offer, once for each set of offers.
+/// Shows the player every enchantment of each offer above the hotbar, once for each set of offers.
 fn show_offers(game: &Game<'_>, player: u128, menu: &Menu, effects: &Effects) {
     let (Some(item), Some(costs)) = (menu.slot(0), menu.data.get(0..3)) else {
         return;
@@ -187,21 +185,17 @@ fn show_offers(game: &Game<'_>, player: u128, menu: &Menu, effects: &Effects) {
         return;
     }
     state().shown.insert(player, key);
-    for (slot, cost) in costs.iter().enumerate().filter(|(_, cost)| **cost > 0) {
-        fx::tell_later(player, offer_line(game, seed, slot, *cost, &item.item));
-    }
-    if effect(effects, "sage_odds") > 0.0 {
-        fx::tell_later(player, odds_line(effects));
-    }
-}
-
-fn odds_line(effects: &Effects) -> String {
-    let resonance = effect(effects, "resonance") + effect(effects, "enchant_luck");
-    format!(
-        "Шанс лишнего зачарования {:.0}%, уровня сверх предела {:.0}%",
-        resonance * 100.0,
-        effect(effects, "beyond") * 100.0
-    )
+    let offers: Vec<(usize, Vec<String>)> = costs
+        .iter()
+        .enumerate()
+        .filter(|(_, cost)| **cost > 0)
+        .map(|(slot, cost)| (slot, offer_names(game, seed, slot, *cost, &item.item)))
+        .collect();
+    let odds = (effect(effects, "sage_odds") > 0.0).then(|| {
+        let resonance = effect(effects, "resonance") + effect(effects, "enchant_luck");
+        (resonance, effect(effects, "beyond"))
+    });
+    fx::show_later(player, rules::sage_line(&offers, odds));
 }
 
 fn grindstone_send(game: &Game<'_>, player: u128, menu: &mut Menu, pos: [i32; 3]) {

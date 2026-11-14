@@ -230,6 +230,18 @@ pub fn tagged_xp_multiplier<'a>(tags: impl IntoIterator<Item = &'a str>) -> f64 
         .map_or(1.0, |percent| f64::from(percent) / 100.0)
 }
 
+/// The tag the mod puts on a mob a spawner made. It is saved with the mob in the world, so a
+/// spawner mob still pays its share after the server restarts.
+pub const SPAWNER_TAG: &str = "pct.spawner";
+
+/// A kill's experience multiplier: the spawner share for a mob from a spawner (by its tag, or by
+/// the ids the mod saw spawn when its kind keeps no tags), times what its `pct.xpNNN` tags ask for.
+pub fn kill_xp_factor(tags: &[&str], seen_from_spawner: bool) -> f64 {
+    let spawner = seen_from_spawner || tags.contains(&SPAWNER_TAG);
+    let share = if spawner { SPAWNER_XP_SHARE } else { 1.0 };
+    share * tagged_xp_multiplier(tags.iter().copied())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,6 +255,19 @@ mod tests {
         assert_eq!(tagged_xp_multiplier(["pct.xp80"]), 0.8);
         assert_eq!(tagged_xp_multiplier(["pct.xp120", "pct.xp145"]), 1.45);
         assert_eq!(tagged_xp_multiplier(["pct.xp500"]), 5.0);
+    }
+
+    #[test]
+    fn a_spawner_mob_pays_its_share_by_its_saved_tag_or_its_id() {
+        assert_eq!(kill_xp_factor(&[], false), 1.0);
+        assert_eq!(kill_xp_factor(&[SPAWNER_TAG], false), SPAWNER_XP_SHARE);
+        assert_eq!(kill_xp_factor(&[], true), SPAWNER_XP_SHARE);
+        assert_eq!(kill_xp_factor(&[SPAWNER_TAG], true), SPAWNER_XP_SHARE);
+        assert_eq!(
+            kill_xp_factor(&[SPAWNER_TAG, "pct.xp200"], false),
+            SPAWNER_XP_SHARE * 2.0
+        );
+        assert!(!SPAWNER_TAG.starts_with(XP_TAG_PREFIX));
     }
 
     #[test]

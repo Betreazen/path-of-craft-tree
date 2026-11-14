@@ -2,16 +2,20 @@
 use crate::game::{
     Game,
     native_hooks::NativeLootDrops,
-    pct_fx_craft_rules as rules, pct_glue as glue,
+    pct_blueprints as prints, pct_fx_craft_rules as rules, pct_glue as glue,
     pct_mining::{self as mining, chance, effect, player_effects},
     pct_rules::{Effects, Tree},
 };
 use horizon_client::{
     first_person::Hand, items::ItemStack, mod_api::NativeServerPlayer, text::Text,
 };
-use horizon_world::registry::BlockStateId;
+use horizon_world::{
+    chunk::{BlockProperties, BlockState},
+    registry::BlockStateId,
+};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    path::PathBuf,
     sync::{
         LazyLock, Mutex, MutexGuard, PoisonError,
         atomic::{AtomicBool, Ordering},
@@ -61,6 +65,9 @@ struct State {
     fill_points: HashMap<u128, [i32; 3]>,
     print_points: HashMap<u128, [i32; 3]>,
     blueprints: HashMap<u128, Blueprint>,
+    /// Players whose saved print was looked for in this world, and those with a print to save.
+    prints_read: HashSet<u128>,
+    prints_dirty: HashSet<u128>,
     last_click: Option<(u128, [i32; 3], u64, bool)>,
 }
 
@@ -302,7 +309,12 @@ fn on_blueprint_corner(game: &mut Game<'_>, acting: &NativeServerPlayer, pos: [i
     }
     let print = capture_blueprint(game, corner, pos);
     let line = format!("Чертёж сохранён: блоков {}", print.cells.len());
-    state().blueprints.insert(acting.uuid, print);
+    {
+        let mut state = state();
+        state.blueprints.insert(acting.uuid, print);
+        state.prints_read.insert(acting.uuid);
+        state.prints_dirty.insert(acting.uuid);
+    }
     tell(game, acting.uuid, &line);
 }
 
@@ -354,6 +366,109 @@ fn paste_blueprint(game: &mut Game<'_>, acting: &NativeServerPlayer, anchor: [i3
             game.native_take_items(&name, 1);
         }
     }
+}
+
+// Prints outlive the server: each player's is kept in the world's mod folder, read on its first
+// use in a world and written on the periodic save, at logout and when the server stops.
+
+fn prints_dir(game: &Game<'_>) -> Option<PathBuf> {
+    Some(glue::mod_dir(game)?.join("blueprints"))
+}
+
+fn to_saved(game: &Game<'_>, print: &Blueprint) -> prints::Saved {
+    let registry = game.pack.assets.registry;
+    let cells = print
+        .cells
+        .iter()
+        .filter_map(|(at, block, _)| {
+            let state = registry.state(*block)?;
+            Some(prints::Cell {
+                at: *at,
+                block: state.name.clone(),
+                properties: state
+                    .properties
+                    .iter()
+                    .map(|(key, value)| (key.clone(), value.clone()))
+                    .collect(),
+            })
+        })
+        .collect();
+    prints::Saved::new(print.size, cells)
+}
+
+/// The print as this game knows its blocks; blocks it no longer has are left out.
+fn from_saved(game: &Game<'_>, saved: prints::Saved) -> Blueprint {
+    let registry = game.pack.assets.registry;
+    let cells = saved
+        .cells
+        .into_iter()
+        .filter_map(|cell| {
+            let mut properties = BlockProperties::new();
+            for (key, value) in cell.properties {
+                properties.insert(key, value);
+            }
+            let descriptor = BlockState {
+                name: cell.block.clone(),
+                properties,
+            };
+            let state = registry.resolve(&descriptor).ok()?;
+            Some((cell.at, state, cell.block))
+        })
+        .collect();
+    Blueprint {
+        size: saved.size,
+        cells,
+    }
+}
+
+/// Reads the player's saved print the first time this world needs it.
+fn load_print(game: &Game<'_>, player: u128) {
+    if !state().prints_read.insert(player) {
+        return;
+    }
+    let Some(path) = prints_dir(game).map(|dir| dir.join(prints::file_name(player))) else {
+        return;
+    };
+    let Ok(bytes) = std::fs::read(&path) else {
+        return;
+    };
+    let Some(saved) = prints::decode(&bytes) else {
+        log::warn!(
+            "path_of_craft_tree: {} is not a blueprint, ignored",
+            path.display()
+        );
+        return;
+    };
+    let print = from_saved(game, saved);
+    state().blueprints.entry(player).or_insert(print);
+}
+
+/// Writes the prints made since the last save.
+pub fn save_blueprints(game: &Game<'_>) {
+    let due: Vec<(u128, prints::Saved)> = {
+        let mut state = state();
+        let dirty = std::mem::take(&mut state.prints_dirty);
+        dirty
+            .into_iter()
+            .filter_map(|player| Some((player, to_saved(game, state.blueprints.get(&player)?))))
+            .collect()
+    };
+    let Some(dir) = prints_dir(game).filter(|_| !due.is_empty()) else {
+        return;
+    };
+    for (player, saved) in due {
+        let path = dir.join(prints::file_name(player));
+        if let Err(error) = glue::write_in_folder(&path, &prints::encode(&saved)) {
+            log::warn!("path_of_craft_tree: blueprint not saved: {error}");
+            state().prints_dirty.insert(player);
+        }
+    }
+}
+
+/// The server stopped and saved: in single player the next world starts without this one's
+/// prints, own blocks and tool corners.
+pub fn forget_world() {
+    *state() = State::default();
 }
 
 fn is_replaceable(tree: &Tree, block: &str) -> bool {
@@ -482,6 +597,7 @@ fn use_paper(
         on_blueprint_corner(game, acting, pos, size);
         return true;
     }
+    load_print(game, acting.uuid);
     let saved = state().blueprints.contains_key(&acting.uuid);
     if !saved || opens_menu(game, pos) {
         return false;
