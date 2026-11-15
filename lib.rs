@@ -3,6 +3,8 @@
 mod blueprints;
 #[path = "mixins/path_of_craft_tree/effect_rules.rs"]
 mod effect_rules;
+#[path = "mixins/path_of_craft_tree/find.rs"]
+pub mod find;
 #[path = "mixins/path_of_craft_tree/fx_craft_rules.rs"]
 mod fx_craft_rules;
 #[path = "mixins/path_of_craft_tree/fx_farm_rules.rs"]
@@ -21,8 +23,12 @@ pub mod machine_rules;
 pub mod pace_counter;
 #[path = "mixins/path_of_craft_tree/placed.rs"]
 pub mod placed;
+#[path = "mixins/path_of_craft_tree/plan.rs"]
+pub mod plan;
 #[path = "mixins/path_of_craft_tree/rules.rs"]
 pub mod rules;
+#[path = "mixins/path_of_craft_tree/session.rs"]
+pub mod session;
 #[path = "mixins/path_of_craft_tree/view.rs"]
 pub mod view;
 #[path = "mixins/path_of_craft_tree/visits.rs"]
@@ -30,6 +36,7 @@ pub mod visits;
 
 /// The paths the mod's modules use inside the game.
 pub mod game {
+    pub use crate::look as pct_look;
     pub use crate::rules as pct_rules;
 }
 

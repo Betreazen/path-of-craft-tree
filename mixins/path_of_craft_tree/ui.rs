@@ -6,6 +6,7 @@ use crate::game::{
     pct_art as art,
     pct_glue::{ID, client},
     pct_look as look, pct_paint as paint, pct_rules as rules, pct_view as view,
+    pct_window as window, pct_window_draw as window_draw,
 };
 use horizon_client::hud::HudBatch;
 use look::{Look, Shown, State};
@@ -51,7 +52,7 @@ struct ShownFor {
 static SHOWN: Mutex<Option<ShownFor>> = Mutex::new(None);
 
 /// The window's view of `profile`, worked out again only when a new profile or tree arrived.
-fn shown_for(tree: &Arc<Tree>, look: &Look, profile: &Arc<Profile>) -> Arc<Shown> {
+pub fn shown_for(tree: &Arc<Tree>, look: &Look, profile: &Arc<Profile>) -> Arc<Shown> {
     let mut cached = SHOWN.lock().unwrap_or_else(PoisonError::into_inner);
     let known = cached
         .as_ref()
@@ -450,7 +451,9 @@ fn draw_window(
         seconds: OPENED.elapsed().as_secs_f32(),
     };
     scene.draw(batch);
-    let over_button = inside(respec_rect(screen), screen.mouse);
+    window_draw::marks(&scene, batch, tree, profile);
+    let over_button =
+        inside(respec_rect(screen), screen.mouse) || window::blocks_tree(game, screen);
     let hovered = hit_node(tree, &look, camera, centre, screen.mouse).filter(|_| !over_button);
     if let Some(node) = hovered {
         scene.hover(batch, node);
@@ -459,8 +462,10 @@ fn draw_window(
     draw_header(game, batch, screen, &look, &shown, branch);
     draw_respec(game, batch, screen, armed);
     draw_legend(&scene, batch);
+    window_draw::tools(game, batch, screen, tree, &look, profile, &shown);
     if let Some(node) = hovered {
-        let lines = tooltip_lines(game, tree, &look, profile, &shown, node);
+        let mut lines = tooltip_lines(game, tree, &look, profile, &shown, node);
+        lines.extend(window::tooltip_line(tree, profile, node.id));
         draw_tooltip(game, batch, screen, &lines);
     }
 }
@@ -473,7 +478,11 @@ pub fn on_press(game: &Game<'_>, screen: &NativeScreenView<'_>, button: i32, can
     }
     if button == RIGHT_BUTTON {
         *canceled = true;
-        if let Some(id) = node_under_mouse(screen) {
+        if window::blocks_tree(game, screen) {
+            return;
+        }
+        // In the planner the right button takes a node out of the plan instead.
+        if let Some(id) = node_under_mouse(screen).filter(|id| !window::plan_remove(*id)) {
             client().toggles.push(id);
         }
         return;
@@ -530,7 +539,11 @@ pub fn on_release(
         }
         view.respec_armed = false;
     }
-    if let Some(id) = node_under_mouse(screen) {
+    if window::click(game, screen) {
+        return;
+    }
+    // In the planner a click puts the rank into the plan instead of learning it.
+    if let Some(id) = node_under_mouse(screen).filter(|id| !window::plan_click(*id)) {
         client().requests.push(id);
     }
 }

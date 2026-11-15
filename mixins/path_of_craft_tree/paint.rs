@@ -434,6 +434,56 @@ impl Scene<'_, '_> {
         }
     }
 
+    /// One node drawn again over whatever lies on it, when it is on screen: the window redraws
+    /// search matches over the dimmed tree.
+    pub fn node(&self, batch: &mut HudBatch, node: &Node) {
+        let at = self.place(node);
+        if !self.on_screen(at, 40.0 * self.level.max(1.0)) {
+            return;
+        }
+        let state = self.shown.state(node.id);
+        if self.level > 0.0 {
+            self.framed(batch, node, at, state);
+        } else {
+            self.dot(batch, node, at, state);
+        }
+    }
+
+    /// A frame of `width` GUI pixels round the node's area, in `colour`, when it is on screen.
+    pub fn ring(&self, batch: &mut HudBatch, node: &Node, colour: u32, width: f32) {
+        let at = self.place(node);
+        if !self.on_screen(at, 40.0 * self.level.max(1.0)) {
+            return;
+        }
+        let spot = self.spot(at);
+        let half = look::hit_half(node.kind, self.level) + width;
+        let [x, y, side] = [spot[0] - half, spot[1] - half, half * 2.0];
+        for edge in [
+            [x, y, side, width],
+            [x, y + side - width, side, width],
+            [x, y + width, width, side - 2.0 * width],
+            [x + side - width, y + width, width, side - 2.0 * width],
+        ] {
+            self.game.native_fill(batch, edge, colour);
+        }
+    }
+
+    /// A link drawn as the tree draws its links, in other colours: the planner's path.
+    pub fn link_between(&self, batch: &mut HudBatch, a: &Node, b: &Node, colours: [u32; 2]) {
+        let (from, to) = (self.place(a), self.place(b));
+        if !self.crosses_screen(from, to) {
+            return;
+        }
+        let unit = self.unit();
+        let (core, outline) = if self.level >= 1.0 {
+            (2.0, 4.0)
+        } else {
+            (1.0, 3.0)
+        };
+        self.stepped(batch, from, to, unit, outline, colours[1]);
+        self.stepped(batch, from, to, unit, core, colours[0]);
+    }
+
     /// A light wash over the node under the mouse.
     pub fn hover(&self, batch: &mut HudBatch, node: &Node) {
         if self.level <= 0.0 {

@@ -118,6 +118,7 @@ fn earn(
             tree.add_cross_xp(profile, other, value);
         }
     };
+    crate::game::pct_gains::record(player, &branch, action, amount);
     glue::grant(game, tree, player, &branch, change, amount);
 }
 

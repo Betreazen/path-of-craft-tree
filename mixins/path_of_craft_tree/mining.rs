@@ -352,6 +352,7 @@ pub fn on_machine_break(
     let share = tree.machine_share;
     let cross = break_cross(tree, &table, 0).map(|(branch, xp)| (branch, xp * share));
     let branch = branch.to_owned();
+    crate::game::pct_gains::record(owner, &branch, &table, amount * share);
     award_break(game, tree, owner, &branch, amount * share, cross);
 }
 
@@ -637,6 +638,7 @@ pub fn on_loot(game: &mut Game<'_>, context: &NativeLootDrops<'_>, drops: &mut V
     }
     let cross = break_cross(tree, context.table, ingots);
     let branch = branch.to_owned();
+    crate::game::pct_gains::record(player, &branch, context.table, amount);
     award_break(game, tree, player, &branch, amount, cross);
 }
 
