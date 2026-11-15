@@ -154,6 +154,51 @@ pub fn is_pathable(block: &str) -> bool {
     PATHABLE.contains(&block)
 }
 
+/// What Landscaper does with one cell of a widened path. `cell` and `above` say whether a path can
+/// be made there (a pathable block with air on top), `dip` whether the cell is air over a pathable
+/// block, `has_dirt` whether the player can fill the dip.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LevelStep {
+    /// The cell becomes path as it is.
+    Path,
+    /// A bump: the block on top is broken and the cell becomes path.
+    CutBump,
+    /// A one-block dip: dirt fills it and becomes path, level with the rest.
+    FillDip,
+    /// A dip with no dirt to fill it: the path goes down into it.
+    PathBelow,
+    Nothing,
+}
+
+pub fn level_step(cell: bool, above: bool, dip: bool, has_dirt: bool, levels: bool) -> LevelStep {
+    match (cell, levels, above, dip, has_dirt) {
+        (true, ..) => LevelStep::Path,
+        (false, false, ..) => LevelStep::Nothing,
+        (false, true, true, ..) => LevelStep::CutBump,
+        (false, true, false, true, true) => LevelStep::FillDip,
+        (false, true, false, true, false) => LevelStep::PathBelow,
+        _ => LevelStep::Nothing,
+    }
+}
+
+/// A Harpoon hit on a hooked mob with `health` left.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum HarpoonHit {
+    /// The mob lives on with this much health.
+    Wound(f32),
+    /// The hit is enough to kill: the game deals it as a real hit, so the mob dies as from any
+    /// other killing blow and the player gets the kill.
+    Finish,
+}
+
+pub fn harpoon_hit(health: f32, damage: f32) -> HarpoonHit {
+    if damage >= health {
+        HarpoonHit::Finish
+    } else {
+        HarpoonHit::Wound(health - damage)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Tree {
     /// The connected logs, nearest first, starting with the origin.
@@ -324,6 +369,25 @@ pub fn cooked_gap(item: &str) -> Option<(i32, f32)> {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn landscaper_cuts_bumps_and_fills_dips() {
+        use LevelStep::*;
+        assert_eq!(level_step(true, false, false, false, false), Path);
+        assert_eq!(level_step(true, true, true, true, true), Path);
+        assert_eq!(level_step(false, true, false, false, false), Nothing);
+        assert_eq!(level_step(false, true, false, false, true), CutBump);
+        assert_eq!(level_step(false, false, true, true, true), FillDip);
+        assert_eq!(level_step(false, false, true, false, true), PathBelow);
+        assert_eq!(level_step(false, false, false, false, true), Nothing);
+    }
+
+    #[test]
+    fn a_harpoon_finishes_a_mob_it_can_kill() {
+        assert_eq!(harpoon_hit(10.0, 3.0), HarpoonHit::Wound(7.0));
+        assert_eq!(harpoon_hit(3.0, 3.0), HarpoonHit::Finish);
+        assert_eq!(harpoon_hit(0.5, 3.0), HarpoonHit::Finish);
+    }
 
     fn nodes(pairs: &[(&str, f64)]) -> impl Fn(&str) -> f64 {
         let map: HashMap<String, f64> = pairs.iter().map(|(k, v)| ((*k).to_owned(), *v)).collect();

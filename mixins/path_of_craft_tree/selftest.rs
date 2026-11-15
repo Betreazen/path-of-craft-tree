@@ -10,8 +10,9 @@
 // Nothing is saved for the pretend owners. Every block position the scenarios name lies in the mod's
 // part of the bench world (z -1000..0, y 100 and up), and the marks they leave are removed again.
 use crate::game::{
-    Game, pct_actions as actions, pct_glue as glue, pct_machine_rules as machine,
-    pct_machines as machines, pct_mining as mining,
+    Game, pct_actions as actions,
+    pct_fx_roam_rules::{SPAWNER_TAG, SPAWNER_XP_SHARE},
+    pct_glue as glue, pct_machine_rules as machine, pct_machines as machines, pct_mining as mining,
     pct_rules::{Profile, Tree},
 };
 use crate::mod_api::NativeCommand;
@@ -121,9 +122,10 @@ fn show_summaries(game: &mut Game<'_>) {
 }
 
 /// The scenarios that need the tagged test mob.
-const TAGGED_SCENARIOS: [&str; 2] = [
+const TAGGED_SCENARIOS: [&str; 3] = [
     "a_pct_xp_tag_scales_a_turret_kill",
     "a_pct_xp_tag_scales_a_slaughter",
+    "a_spawner_tag_kept_with_the_mob_cuts_a_kill",
 ];
 /// Where the tagged test mob stands: in the mod's part of the bench world, by the world spawn; the
 /// run holds its chunk loaded while it needs it. It floats without AI and is removed after the run.
@@ -134,19 +136,17 @@ const TAGGED_MULTIPLIER: f64 = 1.45;
 /// A SoulsCraft brute's health as SoulsCraft states it (data/mobs.json); the tree must agree.
 const SOULSCRAFT_BRUTE_HEALTH: f64 = 60.0;
 
-/// A cow carrying `pct.xp145`, as SoulsCraft tags the mobs it makes stronger: its id, or None when
-/// the game refused the summon.
-fn summon_tagged_mob(game: &mut Game<'_>) -> Option<u32> {
+/// A cow carrying `tag`: `pct.xp145`, as SoulsCraft tags the mobs it makes stronger, or the
+/// spawner tag, as a spawner mob read back from the world carries it. Its id, or None when the
+/// game refused the summon.
+fn summon_tagged_mob(game: &mut Game<'_>, tag: &str) -> Option<u32> {
     let nbt = Tag::compound([
         ("NoAI", Tag::Byte(1)),
         ("NoGravity", Tag::Byte(1)),
         ("Silent", Tag::Byte(1)),
         ("Invulnerable", Tag::Byte(1)),
         ("PersistenceRequired", Tag::Byte(1)),
-        (
-            "Tags",
-            Tag::List(vec![Tag::String(JavaString::from(TAGGED_MOB_TAG))]),
-        ),
+        ("Tags", Tag::List(vec![Tag::String(JavaString::from(tag))])),
     ]);
     let Tag::Compound(nbt) = nbt else {
         return None;
@@ -156,11 +156,21 @@ fn summon_tagged_mob(game: &mut Game<'_>) -> Option<u32> {
 
 /// The kills of the tagged mob, reported by machines, each at 145%: a turret's, whose report calls
 /// the cow a zombie on purpose (the tree must pay by the mob's own kind, as for a content mod's mob
-/// built on a vanilla template), and a slaughterer's.
-fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
+/// built on a vanilla template), and a slaughterer's. A turret's kill of the cow with the spawner
+/// tag pays the spawner share: the tag, not the mod's memory, says where the mob came from, so the
+/// cut holds after a restart.
+fn tagged_scenarios(tree: &Tree, mob: u32, spawner_mob: Option<u32>) -> Vec<Scenario> {
     let owner = format!("{:032x}", glue::SELFTEST_PLAYER);
     let share = tree.machine_share;
     let (archery, shot) = base(tree, "act:shot");
+    let spawner_kill = spawner_mob.map(|spawner_mob| Solo {
+        name: TAGGED_SCENARIOS[2],
+        reports: vec![format!("kill {owner} {spawner_mob} {TAGGED_MOB_KIND}")],
+        expected: gains([(
+            archery.clone(),
+            shot * health(tree, TAGGED_MOB_KIND) * share * SPAWNER_XP_SHARE,
+        )]),
+    });
     vec![
         Solo {
             name: TAGGED_SCENARIOS[0],
@@ -180,6 +190,7 @@ fn tagged_scenarios(tree: &Tree, mob: u32) -> Vec<Scenario> {
         },
     ]
     .into_iter()
+    .chain(spawner_kill)
     .map(Scenario::from)
     .collect()
 }
@@ -357,9 +368,10 @@ pub fn on_server_tick(game: &mut Game<'_>) {
         return;
     };
     let tree = &loaded.tree;
-    match summon_tagged_mob(game) {
+    match summon_tagged_mob(game, TAGGED_MOB_TAG) {
         Some(mob) => {
-            for scenario in tagged_scenarios(tree, mob)
+            let spawner_mob = summon_tagged_mob(game, SPAWNER_TAG);
+            for scenario in tagged_scenarios(tree, mob, spawner_mob)
                 .into_iter()
                 .filter(|s| s.name.contains(run.filter.as_str()))
             {
@@ -367,6 +379,16 @@ pub fn on_server_tick(game: &mut Game<'_>) {
                 run.outcome.record(scenario.name, result);
             }
             game.native_remove_mob(DIMENSION, mob);
+            match spawner_mob {
+                Some(spawner_mob) => {
+                    game.native_remove_mob(DIMENSION, spawner_mob);
+                }
+                None if TAGGED_SCENARIOS[2].contains(run.filter.as_str()) => {
+                    let why = "the game refused the cow with the spawner tag".to_owned();
+                    run.outcome.record(TAGGED_SCENARIOS[2], Err(why));
+                }
+                None => {}
+            }
         }
         None if run.ticks < MAX_WAIT_TICKS => {
             run.ticks += 1;
@@ -410,6 +432,10 @@ fn check(game: &mut Game<'_>, tree: &Tree, scenario: &Scenario) -> Result<(), St
         .map(|(owner, _)| profile(*owner))
         .collect();
     for report in &scenario.reports {
+        if let Some(at) = report.strip_prefix(EXPLODE_STEP) {
+            explode(game, at)?;
+            continue;
+        }
         let mut ran = false;
         let line = format!("{} {report}", machine::COMMAND);
         machines::on_console_command(game, &line, &mut ran);
@@ -454,6 +480,24 @@ fn check(game: &mut Game<'_>, tree: &Tree, scenario: &Scenario) -> Result<(), St
     } else {
         Err(wrong.join("; "))
     }
+}
+
+/// A scenario step the selftest runs itself instead of reporting it: an explosion removes the
+/// block at the position that follows, as `explosion_hit_block` reports each block a blast takes.
+const EXPLODE_STEP: &str = "explode ";
+
+/// Runs an explosion step at `at` (`minecraft:overworld x y z`): the block's mark goes as on the
+/// server tick after a real blast.
+fn explode(game: &Game<'_>, at: &str) -> Result<(), String> {
+    let mut words = at.split_whitespace();
+    let dimension = words.next().filter(|word| *word == DIMENSION);
+    let coords: Vec<i32> = words.filter_map(|word| word.parse().ok()).collect();
+    let (Some(_), [x, y, z]) = (dimension, coords.as_slice()) else {
+        return Err(format!("not an explosion step: {at}"));
+    };
+    mining::on_explosion_block(DIMENSION, [*x, *y, *z]);
+    mining::apply_explosions(game);
+    Ok(())
 }
 
 /// The branches whose gain from `before` to `after` differs from `expected`.
@@ -596,6 +640,16 @@ fn solo_scenarios(tree: &Tree, spots: &Spots) -> Vec<Solo> {
                 format!("place {} minecraft:iron_ore", at(2)),
                 format!("break {owner} {} minecraft:iron_ore pickaxe", at(2)),
                 format!("break {owner} {} minecraft:iron_ore pickaxe", at(2)),
+            ],
+            expected: break_gain(tree, "minecraft:iron_ore", machine::Tool::Pickaxe),
+        },
+        Solo {
+            // A blast takes the placed block and its mark; the natural ore later at that spot pays.
+            name: "an_exploded_placed_block_loses_its_mark",
+            reports: vec![
+                format!("place {} minecraft:iron_ore", at(6)),
+                format!("{EXPLODE_STEP}{}", at(6)),
+                format!("break {owner} {} minecraft:iron_ore pickaxe", at(6)),
             ],
             expected: break_gain(tree, "minecraft:iron_ore", machine::Tool::Pickaxe),
         },

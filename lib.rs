@@ -1,4 +1,6 @@
 // Builds the game-free modules of the mod on their own, so `cargo test` runs in seconds.
+#[path = "mixins/path_of_craft_tree/blueprints.rs"]
+mod blueprints;
 #[path = "mixins/path_of_craft_tree/effect_rules.rs"]
 mod effect_rules;
 #[path = "mixins/path_of_craft_tree/fx_craft_rules.rs"]

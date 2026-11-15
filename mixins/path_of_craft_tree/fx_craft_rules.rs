@@ -342,9 +342,42 @@ pub fn square_around(pos: [i32; 3], face: [i32; 3]) -> Vec<[i32; 3]> {
     cells
 }
 
+/// Connoisseur's one line above the hotbar: each offer's enchantments by its button, then, with
+/// the upgrade, the chances of an extra enchantment and of a level past the maximum.
+pub fn sage_line(offers: &[(usize, Vec<String>)], odds: Option<(f64, f64)>) -> String {
+    let mut parts: Vec<String> = offers
+        .iter()
+        .map(|(slot, names)| format!("{}: {}", slot + 1, names.join(", ")))
+        .collect();
+    if let Some((extra, beyond)) = odds {
+        parts.push(format!(
+            "лишнее {:.0}%, сверх предела {:.0}%",
+            extra * 100.0,
+            beyond * 100.0
+        ));
+    }
+    parts.join(" · ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn connoisseur_shows_every_offer_on_one_line() {
+        let offers = vec![
+            (0, vec!["Прочность I".to_owned()]),
+            (2, vec!["Острота III".to_owned(), "Добыча II".to_owned()]),
+        ];
+        assert_eq!(
+            sage_line(&offers, None),
+            "1: Прочность I · 3: Острота III, Добыча II"
+        );
+        assert_eq!(
+            sage_line(&offers[..1], Some((0.1, 0.05))),
+            "1: Прочность I · лишнее 10%, сверх предела 5%"
+        );
+    }
 
     #[test]
     fn crafting_pays_per_ingredient_up_to_sixteen_ingredients() {

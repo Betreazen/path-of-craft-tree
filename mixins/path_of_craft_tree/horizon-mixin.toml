@@ -117,6 +117,18 @@ name = "pct_mining"
 source = "mining.rs"
 
 [[module]]
+id = "anvil"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_anvil"
+source = "anvil.rs"
+
+[[module]]
+id = "blueprints"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_blueprints"
+source = "blueprints.rs"
+
+[[module]]
 id = "limits"
 file = "crates/horizon-client/src/game.rs"
 name = "pct_limits"
@@ -466,18 +478,6 @@ bindings = [
   { name = "player", ty = "u128", value = "player" },
   { name = "recipe", ty = "&str", value = "recipe" },
   { name = "stack", ty = "&horizon_client::items::ItemStack", value = "stack" },
-]
-
-[[injection]]
-id = "anvil_craft_post"
-hook = "anvil_craft_post"
-hook_version = 1
-kind = "HEAD"
-helper = "anvil_craft_post.rs"
-bindings = [
-  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
-  { name = "player", ty = "u128", value = "player" },
-  { name = "craft", ty = "&horizon_client::menu::AnvilCraft", value = "craft" },
 ]
 
 [[injection]]
@@ -1267,18 +1267,6 @@ bindings = [
   { name = "pos", ty = "[i32; 3]", value = "pos" },
 ]
 
-[[injection]]
-id = "fx_craft_anvil_post"
-hook = "anvil_craft_post"
-hook_version = 1
-kind = "HEAD"
-helper = "fx_craft_anvil_post.rs"
-bindings = [
-  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
-  { name = "player", ty = "u128", value = "player" },
-  { name = "craft", ty = "&horizon_client::menu::AnvilCraft", value = "craft" },
-]
-
 # Anvil Master: the wear roll never happens, the use sound still plays.
 [[injection]]
 id = "fx_craft_anvil_used"
@@ -1301,6 +1289,22 @@ bindings = [
   { name = "host", ty = "&crate::game::lan::LanHost", value = "&*host" },
   { name = "conn", ty = "u32", value = "conn" },
   { name = "gs", ty = "&crate::game::lan_stations::GuestStation", value = "&*gs" },
+]
+
+# Every anvil take on a host ends here: single player's server thread, a LAN host and a dedicated
+# server alike, whether or not the engine deferred the take for its anvil_craft_post announcement.
+# The anvil's experience (the repair, the book, a first enchantment) is paid here, once per take.
+[[injection]]
+id = "anvil_take"
+target = "horizon_client::game::lan_stations::Game<'_>::lan_station_combined"
+kind = "HEAD"
+helper = "anvil_take.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "host", ty = "&crate::game::lan::LanHost", value = "&*host" },
+  { name = "conn", ty = "u32", value = "conn" },
+  { name = "gs", ty = "&crate::game::lan_stations::GuestStation", value = "&*gs" },
+  { name = "craft", ty = "Option<&horizon_client::menu::AnvilCraft>", value = "craft" },
 ]
 
 [[injection]]
@@ -1814,7 +1818,7 @@ bindings = [
   { name = "data", ty = "&[u8]", value = "data" },
 ]
 
-# Kills: who came from a spawner, and the bonus for a long shot.
+# Kills: who came from a spawner (tagged pct.spawner, kept with the mob), and the long-shot bonus.
 [[injection]]
 id = "fx_roam_spawner"
 target = "horizon_client::game::spawner::Game<'_>::add_planned"
@@ -1822,6 +1826,7 @@ kind = "RETURN"
 helper = "fx_roam_spawner.rs"
 bindings = [
   { name = "value", ty = "HashMap<u32, u32>", value = "$value" },
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
 [[injection]]
@@ -1843,6 +1848,19 @@ target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
 helper = "mods_listed.rs"
 bindings = [
   { name = "mods", ty = "&mut Vec<crate::mod_api::NativeMod>", value = "&mut *mods" },
+]
+
+# An explosion's blocks lose their "placed" marks (mining.rs on_explosion_block). Not in the
+# hook catalog: here a blast turns each block it reaches to air, after the mods' detonate hook
+# spared theirs. The hook only queues the block; the server tick drops the mark, as for pistons.
+[[injection]]
+id = "explosion_hit_block"
+target = "horizon_client::game::explosion::Game<'_>::explosion_hit_block"
+kind = "HEAD"
+helper = "explosion_hit_block.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "pos", ty = "[i32; 3]", value = "pos" },
 ]
 
 # Pistons carry a placed block's mark with it (mining.rs on_piston_move). The level's hook only

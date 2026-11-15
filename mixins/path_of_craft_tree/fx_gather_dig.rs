@@ -21,6 +21,8 @@ const PATH_ACTION: &str = "act:path";
 const AIR: &str = "minecraft:air";
 const MAX_REMEMBERED_PATHS: usize = 200_000;
 const FILL_MATERIALS: [&str; 2] = ["minecraft:dirt", "minecraft:sand"];
+/// What Landscaper fills a dip with: only dirt turns into path.
+const DIP_FILL: &str = "minecraft:dirt";
 const STUN_PUSH: f64 = 0.8;
 const STUN_LIFT: f64 = 0.35;
 
@@ -232,29 +234,50 @@ fn make_path(game: &mut Game<'_>, player: u128, pos: [i32; 3]) {
     }
 }
 
-/// Landscaper's levelling: knocks down a bump, or lowers the path into a one-block dip.
+/// Landscaper's levelling: knocks down a bump, and fills a one-block dip with dirt from the
+/// inventory; without dirt the path goes down into the dip.
 fn path_cell(game: &mut Game<'_>, player: u128, cell: [i32; 3], levels: bool) {
+    let above = [cell[0], cell[1] + 1, cell[2]];
+    let below = [cell[0], cell[1] - 1, cell[2]];
+    let step = rules::level_step(
+        can_path(game, cell),
+        levels && can_path(game, above),
+        levels && game.native_block(cell) == AIR && can_path(game, below),
+        levels && game.native_count_items(DIP_FILL) > 0,
+        levels,
+    );
+    match step {
+        rules::LevelStep::Path => make_path(game, player, cell),
+        rules::LevelStep::CutBump => {
+            {
+                let _chain = ChainGuard::start(KIND_UTILITY);
+                game.native_player_break_block(player, above, false);
+            }
+            if can_path(game, cell) {
+                make_path(game, player, cell);
+            }
+        }
+        rules::LevelStep::FillDip => fill_dip(game, player, cell),
+        rules::LevelStep::PathBelow => make_path(game, player, below),
+        rules::LevelStep::Nothing => {}
+    }
+}
+
+/// Fills the dip at `cell` with one dirt and makes it path. The dirt counts as placed, so the
+/// filled path pays nothing, and breaking it later pays nothing either.
+fn fill_dip(game: &mut Game<'_>, player: u128, cell: [i32; 3]) {
+    if !set_block(game, cell, DIP_FILL) {
+        return;
+    }
+    on_place(game, cell);
+    let creative = game
+        .native_acting_player()
+        .is_some_and(|a| a.game_mode == 1);
+    if !creative {
+        game.native_take_items(DIP_FILL, 1);
+    }
     if can_path(game, cell) {
         make_path(game, player, cell);
-        return;
-    }
-    if !levels {
-        return;
-    }
-    let above = [cell[0], cell[1] + 1, cell[2]];
-    if can_path(game, above) {
-        {
-            let _chain = ChainGuard::start(KIND_UTILITY);
-            game.native_player_break_block(player, above, false);
-        }
-        if can_path(game, cell) {
-            make_path(game, player, cell);
-        }
-        return;
-    }
-    let below = [cell[0], cell[1] - 1, cell[2]];
-    if game.native_block(cell) == AIR && can_path(game, below) {
-        make_path(game, player, below);
     }
 }
 

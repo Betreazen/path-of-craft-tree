@@ -641,12 +641,25 @@ pub fn on_period(game: &mut Game<'_>, acting: &NativeServerPlayer, effects: &Eff
 
 // Experience from kills: spawner mobs pay a quarter, long shots a bonus.
 
-pub fn mark_spawner_mobs(ids: &HashMap<u32, u32>) {
+/// Mobs a spawner just made: each gets the spawner tag, saved with the mob in the world. A kind
+/// that keeps no tags is remembered by id instead, until the server stops.
+pub fn mark_spawner_mobs(game: &mut Game<'_>, ids: &HashMap<u32, u32>) {
+    let untagged: Vec<u32> = ids
+        .values()
+        .copied()
+        .filter(|id| {
+            game.native_entity(*id)
+                .is_none_or(|mob| !game.native_entity_add_tag(mob, rules::SPAWNER_TAG))
+        })
+        .collect();
+    if untagged.is_empty() {
+        return;
+    }
     let mut state = state();
     if state.spawner_mobs.len() >= MAX_REMEMBERED {
         state.spawner_mobs.clear();
     }
-    state.spawner_mobs.extend(ids.values().copied());
+    state.spawner_mobs.extend(untagged);
 }
 
 /// The dying mob's own kind as the game knows it (a content mod's `soulscraft:revenant`), which a
@@ -663,18 +676,13 @@ pub fn mob_kind(game: &Game<'_>, entity: u32, reported: &str) -> String {
 /// `pct.xpNNN` tag asks for (a mob another mod made stronger). A dying mob keeps its tags until it
 /// is removed, so every kill hook and a machine's report in the same tick still read them.
 pub fn kill_xp_factor(game: &Game<'_>, entity: u32) -> f64 {
-    let spawner = if state().spawner_mobs.contains(&entity) {
-        rules::SPAWNER_XP_SHARE
-    } else {
-        1.0
-    };
-    let tagged = game
+    let seen = state().spawner_mobs.contains(&entity);
+    let tags = game
         .native_entity(entity)
         .and_then(|mob| game.native_entity_tags(mob))
-        .map_or(1.0, |tags| {
-            rules::tagged_xp_multiplier(tags.iter().map(String::as_str))
-        });
-    spawner * tagged
+        .unwrap_or_default();
+    let tags: Vec<&str> = tags.iter().map(String::as_str).collect();
+    rules::kill_xp_factor(&tags, seen)
 }
 
 pub fn note_far_shot(mob: u32, shooter: u128) {

@@ -274,6 +274,43 @@ pub fn harpoon(game: &Game<'_>) -> Option<f32> {
     (effect(&effects, "harpoon") > 0.0).then(|| effect(&effects, "harpoon_damage") as f32)
 }
 
+/// The damage type of Harpoon's killing hit: like the wound, it ignores armour.
+const HARPOON_FINISH: &str = "minecraft:generic_kill";
+/// What a hit the game refused leaves the mob, as Harpoon did before it could kill.
+const HARPOON_LEAVES: f32 = 0.5;
+
+/// Harpoon's damage to the hooked mob `id`. A wound lowers its health; a hit that kills is dealt
+/// through the game as the reeling player's blow, so the mob dies, drops its loot and counts as
+/// that player's kill.
+pub fn harpoon_hit(game: &mut Game<'_>, id: u32, damage: f32) {
+    if damage <= 0.0 {
+        return;
+    }
+    let Some(health) = game.mobs.iter().find(|m| m.id == id).map(|m| m.health) else {
+        return;
+    };
+    let killed = match rules::harpoon_hit(health, damage) {
+        rules::HarpoonHit::Wound(left) => {
+            set_mob_health(game, id, left);
+            return;
+        }
+        rules::HarpoonHit::Finish => game.native_acting_player().is_some_and(|acting| {
+            let attacker = u32::try_from(acting.entity_id).ok();
+            game.native_hurt_entity(&acting.dimension, id, damage, HARPOON_FINISH, attacker)
+        }),
+    };
+    if !killed {
+        set_mob_health(game, id, health.min(HARPOON_LEAVES));
+    }
+}
+
+fn set_mob_health(game: &mut Game<'_>, id: u32, health: f32) {
+    if let Some(mob) = game.mobs.iter_mut().find(|m| m.id == id) {
+        mob.health = health;
+        mob.needs_sync = true;
+    }
+}
+
 /// Raw Is Fine: raw fish feeds like cooked fish, and the upgrade adds a short bonus.
 pub fn on_eaten(game: &mut Game<'_>, stack: &ItemStack) {
     let Some((food, saturation)) = rules::cooked_gap(&stack.item) else {
