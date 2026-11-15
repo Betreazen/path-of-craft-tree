@@ -66,7 +66,11 @@ impl Dict {
             return Some(en.clone());
         }
         if let Some((base, part)) = ru.split_once(": ") {
-            let base = self.english(base);
+            let base = if is_plain(base) {
+                Some(base.to_owned())
+            } else {
+                self.english(base)
+            };
             let part = if is_plain(part) {
                 Some(part.to_owned())
             } else {
@@ -239,6 +243,8 @@ mod tests {
         assert_eq!(dict.english("Без чисел и неизвестно"), None);
         // A name made of known parts still wins over a template.
         assert_eq!(dict.english("Жила: 3").as_deref(), Some("Vein: 3"));
+        // A Latin first part (a player's name, a branch id) stays, the rest is translated.
+        assert_eq!(dict.english("Steve: Жила: 2").as_deref(), Some("Steve: Vein: 2"));
     }
 
     #[test]

@@ -158,6 +158,8 @@
   "Ваши уровни теперь видны в таблице лидеров сайта": "Your levels are now shown on the site's leaderboard",
   "Вас больше нет в таблице лидеров": "You are no longer on the leaderboard",
   "Не получилось": "Didn't work",
+  "/pct admin give|take <игрок> <ветвь|general> <опыт> | level <игрок> <ветвь|general> <уровень> | reset <игрок> | show <игрок> | reload": "/pct admin give|take <player> <branch|general> <xp> | level <player> <branch|general> <level> | reset <player> | show <player> | reload",
+  "/pct admin give|take <игрок> <ветвь|general> <опыт>, level <игрок> <ветвь|general> <уровень>, reset <игрок>, show <игрок>, reload": "/pct admin give|take <player> <branch|general> <xp>, level <player> <branch|general> <level>, reset <player>, show <player>, reload",
   "{} вступил в группу": "{} joined the group",
   "Вы в группе: {}": "You are in a group: {}",
   "Вы в группе: {}, {}": "You are in a group: {}, {}",
@@ -185,5 +187,8 @@
   "Приглашение устарело": "The invitation has expired",
   "неизвестная команда, /pct help": "unknown command, /pct help",
   "Администратор изменил ваш профиль": "An administrator changed your profile",
+  "опыт {} → {}, уровень {} → {}": "XP {} → {}, level {} → {}",
+  "опыт {} → {}, уровень {} → {}, возвращено рангов: {}": "XP {} → {}, level {} → {}, ranks refunded: {}",
+  "дерево сброшено, возвращено рангов: {}": "tree reset, ranks refunded: {}",
   "Дерево не загружено": "The tree is not loaded"
 }

@@ -40,10 +40,12 @@ pub fn trf(template: &str, args: &[&dyn Display]) -> String {
     EN.format(CLIENT.get(), template, args)
 }
 
-/// A player's language as their client told the server; Russian when unknown.
+/// A player's language as their client told the server. The host of a single-player or LAN world
+/// is no guest of its own server, so the game's own language stands in; a dedicated server never
+/// draws a frame, so that stays Russian there.
 pub fn player_lang(game: &crate::game::Game<'_>, player: u128) -> Lang {
     game.native_player_client(player)
-        .map_or(Lang::Ru, |info| Lang::from_code(&info.language))
+        .map_or_else(|| CLIENT.get(), |info| Lang::from_code(&info.language))
 }
 
 /// A text for a player in `lang`.

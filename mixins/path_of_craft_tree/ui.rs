@@ -314,11 +314,10 @@ fn draw_header(
             &branch.name,
             look::mix(WHITE, branch.colour, 0.45),
         );
-        let rest = format!(
-            ": ур. {} ({:.0}%), очки {}",
-            standing.level,
-            standing.progress * 100.0,
-            standing.points
+        let percent = format!("{:.0}", standing.progress * 100.0);
+        let rest = trf(
+            ": ур. {} ({}%), очки {}",
+            &[&standing.level, &percent, &standing.points],
         );
         put(batch, &mut x, &rest, WHITE);
         game.native_fill(
@@ -328,9 +327,9 @@ fn draw_header(
         );
         x += 14.0;
     }
-    let general = format!(
+    let general = trf(
         "Общие: ур. {}, очки {}",
-        shown.general_level, shown.general_points
+        &[&shown.general_level, &shown.general_points],
     );
     put(batch, &mut x, &general, WHITE);
 }
@@ -381,10 +380,11 @@ fn draw_legend(scene: &Scene<'_, '_>, batch: &mut HudBatch) {
     let mut x = rx + rw - 6.0;
     let y = ry + rh - 18.0;
     for (state, label) in LEGEND.iter().rev() {
-        x -= scene.game.native_text_width(label);
+        let label = tr(label);
+        x -= scene.game.native_text_width(&label);
         scene
             .game
-            .native_text(batch, label, [x, y + 2.0], GREY, true);
+            .native_text(batch, &label, [x, y + 2.0], GREY, true);
         x -= 2.0 + paint::SWATCH;
         scene.swatch(batch, *state, [x, y]);
         x -= 8.0;
