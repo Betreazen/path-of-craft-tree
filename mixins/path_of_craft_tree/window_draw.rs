@@ -624,7 +624,11 @@ fn stats_panel(
             let (name, colour) = branch_name(look, branch);
             lines.push(Line {
                 cells: vec![
-                    (session::source_label(source), 0.0, WHITE),
+                    (
+                        session::source_label_with(source, crate::game::pct_texts::block_name),
+                        0.0,
+                        WHITE,
+                    ),
                     (name, 170.0, colour),
                     (format!("+{xp:.0}"), 250.0, GREEN),
                 ],

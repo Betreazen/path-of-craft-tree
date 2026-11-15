@@ -216,16 +216,22 @@ const ACTIONS: [(&str, &str); 44] = [
 
 /// A source as the page shows it: an action's name, or a block's id from its loot table.
 pub fn source_label(source: &str) -> String {
+    source_label_with(source, |_| None)
+}
+
+/// As `source_label`, but a block is named by `block_name` (the game's own name for an id such as
+/// `minecraft:gold_ore`) when it knows the block.
+pub fn source_label_with(source: &str, block_name: impl Fn(&str) -> Option<String>) -> String {
     if let Some((_, name)) = ACTIONS.iter().find(|(id, _)| *id == source) {
         return (*name).to_owned();
     }
     let tail = source.rsplit(['/', ':']).next().unwrap_or(source);
-    let words = tail.replace('_', " ");
-    if source.contains("blocks/") {
-        format!("блок: {words}")
-    } else {
-        words
-    }
+    let Some((namespace, _)) = source.split_once(":blocks/") else {
+        return tail.replace('_', " ");
+    };
+    let name =
+        block_name(&format!("{namespace}:{tail}")).unwrap_or_else(|| tail.replace('_', " "));
+    format!("блок: {name}")
 }
 
 #[cfg(test)]
@@ -321,6 +327,16 @@ mod tests {
             "блок: diamond ore"
         );
         assert_eq!(source_label("something"), "something");
+        let game_names = |id: &str| (id == "minecraft:gold_ore").then(|| "Золотая руда".to_owned());
+        assert_eq!(
+            source_label_with("minecraft:blocks/gold_ore", game_names),
+            "блок: Золотая руда"
+        );
+        assert_eq!(
+            source_label_with("minecraft:blocks/diamond_ore", game_names),
+            "блок: diamond ore"
+        );
+        assert_eq!(source_label_with("act:fish", game_names), "рыба");
         assert_eq!(per_hour(100.0, 30.0), None);
         assert_eq!(per_hour(100.0, 1800.0), Some(200.0));
     }

@@ -40,6 +40,14 @@ pub fn trf(template: &str, args: &[&dyn Display]) -> String {
     EN.format(CLIENT.get(), template, args)
 }
 
+/// A block's own name in this game's language, from the game's language files: `minecraft:gold_ore`
+/// is «Золотая руда» in a Russian game and "Gold Ore" in an English one.
+pub fn block_name(id: &str) -> Option<String> {
+    let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
+    let key = format!("block.{namespace}.{path}");
+    horizon_client_core::lang::has(&key).then(|| horizon_client_core::lang::get(&key))
+}
+
 /// A player's language as their client told the server. The host of a single-player or LAN world
 /// is no guest of its own server, so the game's own language stands in; a dedicated server never
 /// draws a frame, so that stays Russian there.
