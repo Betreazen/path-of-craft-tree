@@ -12,6 +12,7 @@ use crate::game::{
     pct_keys as keys, pct_look as look, pct_plan as plan, pct_rules as rules,
     pct_session as session, pct_ui as ui, pct_view as view,
 };
+use crate::game::pct_texts::{tr, trf};
 use find::{Found, Index};
 use horizon_client::clipboard::Clipboard as _;
 use look::{Look, Shown};
@@ -74,6 +75,7 @@ pub enum Button {
     Clear,
     Copy,
     Bar,
+    Title,
     Close,
 }
 
@@ -115,7 +117,9 @@ pub struct Window {
     open_last_frame: bool,
     /// Laid-out panels: the planner's for a plan view, the statistics for what they show.
     pub plan_lines: Option<(Arc<PlanView>, Arc<Panel>)>,
-    pub stats_lines: Option<((u64, u64, bool), Arc<Panel>)>,
+    /// The statistics page, kept until the session, the minute's tenth, the bar or the profile
+    /// (by its pointer) changes.
+    pub stats_lines: Option<((u64, u64, bool, usize), Arc<Panel>)>,
     /// The buttons and panels drawn last frame, where clicks are looked up.
     pub hits: Vec<(Button, [f32; 4])>,
     pub areas: Vec<[f32; 4]>,
@@ -160,8 +164,10 @@ pub fn window() -> MutexGuard<'static, Window> {
 }
 
 impl Window {
+    /// Shows `text` under the tool row for a while, in the game's language.
     pub fn say(&mut self, text: impl Into<String>, colour: u32) {
-        self.message = Some((text.into(), colour, Instant::now()));
+        let text = crate::game::pct_texts::tr(&text.into()).into_owned();
+        self.message = Some((text, colour, Instant::now()));
     }
 
     /// The message to show now, if one is fresh.
@@ -511,6 +517,19 @@ fn press(button: Button) {
         }
         Button::Apply => apply(),
         Button::Copy => copy_build(),
+        Button::Title => next_title(),
+    }
+}
+
+/// Asks the server for the next title: an empty message means the automatic one. The page shows
+/// the change when the server's new profile arrives.
+fn next_title() {
+    let mut client = client();
+    let Some(tree) = client.tree.clone() else {
+        return;
+    };
+    if let Some(choice) = tree.next_title_choice(&client.profile) {
+        client.title_request = Some(choice.unwrap_or_default());
     }
 }
 
@@ -574,12 +593,15 @@ fn apply() {
     let steps: Vec<u16> = state.plan.steps()[..affordable].to_vec();
     state.applying = steps.into();
     let text = if affordable < view.steps {
-        format!(
-            "Изучаю {affordable} из {} рангов плана, на остальные не хватает очков",
-            view.steps
+        trf(
+            "Изучаю {} из {} рангов плана, на остальные не хватает очков",
+            &[&affordable, &view.steps],
         )
     } else {
-        format!("Изучаю план: {affordable} {}", ranks_word(affordable))
+        trf(
+            "Изучаю план: {} {}",
+            &[&affordable, &ranks_word(affordable)],
+        )
     };
     state.say(text, GREEN);
 }
@@ -596,11 +618,9 @@ fn copy_build() {
     let text = plan::encode(rules::PROFILE_LAYOUT, &steps);
     let shown: String = text.chars().take(24).collect();
     state.say(
-        format!(
-            "Строка сборки скопирована: {shown}… ({} {}, из них в плане {})",
-            steps.len(),
-            ranks_word(steps.len()),
-            view.steps
+        trf(
+            "Строка сборки скопирована: {}… ({} {}, из них в плане {})",
+            &[&shown, &steps.len(), &ranks_word(steps.len()), &view.steps],
         ),
         GREEN,
     );
@@ -626,15 +646,15 @@ fn import(text: &str) {
             let planned = next.steps().len();
             state.set_plan(next);
             state.planning = true;
-            let mut words = format!(
-                "Сборка загружена: в плане {planned} {}",
-                ranks_word(planned)
+            let mut words = trf(
+                "Сборка загружена: в плане {} {}",
+                &[&planned, &ranks_word(planned)],
             );
             if skipped.learned > 0 {
-                words.push_str(&format!(", уже изучено {}", skipped.learned));
+                words.push_str(&trf(", уже изучено {}", &[&skipped.learned]));
             }
             if skipped.unreachable > 0 {
-                words.push_str(&format!(", не подошло {}", skipped.unreachable));
+                words.push_str(&trf(", не подошло {}", &[&skipped.unreachable]));
             }
             state.say(words, GREEN);
         }
@@ -642,8 +662,11 @@ fn import(text: &str) {
     }
 }
 
-/// "ранг", "ранга" or "рангов" for `count`.
+/// "ранг", "ранга" or "рангов" for `count`; "rank" or "ranks" in English.
 pub fn ranks_word(count: usize) -> &'static str {
+    if crate::game::pct_texts::client_lang() == crate::game::pct_lang::Lang::En {
+        return if count == 1 { "rank" } else { "ranks" };
+    }
     match (count % 10, count % 100) {
         (1, n) if n != 11 => "ранг",
         (2..=4, n) if !(12..=14).contains(&n) => "ранга",
@@ -661,11 +684,11 @@ pub fn tooltip_line(tree: &Arc<Tree>, profile: &Arc<Profile>, id: u16) -> Option
     let planned = view.planned(id);
     let node = tree.nodes.get(&id)?;
     let line = if planned > 0 {
-        format!("В плане: +{planned}. ПКМ: убрать из плана")
+        trf("В плане: +{}. ПКМ: убрать из плана", &[&planned])
     } else if profile.rank(id) >= node.max_rank() {
-        "Изучено".to_owned()
+        tr("Изучено").into_owned()
     } else {
-        "Клик: добавить в план".to_owned()
+        tr("Клик: добавить в план").into_owned()
     };
     Some((line, AQUA))
 }

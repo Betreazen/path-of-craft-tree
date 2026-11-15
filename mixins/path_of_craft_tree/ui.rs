@@ -8,6 +8,7 @@ use crate::game::{
     pct_look as look, pct_paint as paint, pct_rules as rules, pct_view as view,
     pct_window as window, pct_window_draw as window_draw,
 };
+use crate::game::pct_texts::{tr, trf};
 use horizon_client::hud::HudBatch;
 use look::{Look, Shown, State};
 use paint::Scene;
@@ -153,7 +154,7 @@ fn wrap(game: &Game<'_>, text: &str) -> Vec<String> {
 fn status_line(tree: &Tree, profile: &Profile, shown: &Shown, node: &Node) -> (String, u32) {
     let ranks = node.max_rank();
     let rank = profile.rank(node.id);
-    let line = |text: &str, colour| (text.to_owned(), colour);
+    let line = |text: &str, colour| (tr(text).into_owned(), colour);
     match shown.state(node.id) {
         State::Off => return line("Выключено. ПКМ: включить", RED),
         State::Learned if node.kind == Kind::Big => return line("Изучено. ПКМ: выключить", GREY),
@@ -161,8 +162,8 @@ fn status_line(tree: &Tree, profile: &Profile, shown: &Shown, node: &Node) -> (S
         _ => {}
     }
     match tree.can_allocate(profile, node.id) {
-        Ok(()) if rank > 0 => (format!("Клик: ранг {}/{ranks}", rank + 1), GREEN),
-        Ok(()) if ranks > 1 => (format!("Клик: изучить, ранг 1/{ranks}"), GREEN),
+        Ok(()) if rank > 0 => (trf("Клик: ранг {}/{}", &[&(rank + 1), &ranks]), GREEN),
+        Ok(()) if ranks > 1 => (trf("Клик: изучить, ранг 1/{}", &[&ranks]), GREEN),
         Ok(()) => line("Клик: изучить", GREEN),
         Err(Refusal::NoPointsLeft) => line("Нет очков", RED),
         Err(_) => {
@@ -199,7 +200,7 @@ fn tooltip_lines(
     }
     let rank = usize::from(profile.rank(node.id));
     if ranks > 1 {
-        lines.push((format!("Ранг {rank}/{ranks}"), AQUA));
+        lines.push((trf("Ранг {}/{}", &[&rank, &ranks]), AQUA));
         for (i, text) in node.rank_descriptions.iter().enumerate() {
             let colour = match i.cmp(&rank) {
                 std::cmp::Ordering::Less => WHITE,
@@ -218,7 +219,7 @@ fn tooltip_lines(
         );
     }
     if node.todo {
-        lines.push(("Эффект ещё не реализован".to_owned(), RED));
+        lines.push((tr("Эффект ещё не реализован").into_owned(), RED));
     }
     lines.push(status_line(tree, profile, shown, node));
     lines
@@ -359,9 +360,9 @@ fn draw_respec(game: &Game<'_>, batch: &mut HudBatch, screen: &NativeScreenView<
         }
     }
     let label = if armed {
-        "Точно сбросить?".to_owned()
+        tr("Точно сбросить?").into_owned()
     } else {
-        format!("Сброс: {} ур. опыта", rules::RESPEC_LEVELS)
+        trf("Сброс: {} ур. опыта", &[&rules::RESPEC_LEVELS])
     };
     let width = game.native_text_width(&label);
     let colour = if hot { YELLOW } else { WHITE };
@@ -413,7 +414,7 @@ pub fn draw(game: &Game<'_>, batch: &mut HudBatch, screen: &NativeScreenView<'_>
             if problem.is_none() {
                 game.native_text(
                     batch,
-                    "Ожидание дерева от сервера…",
+                    &tr("Ожидание дерева от сервера…"),
                     [x + 8.0, y + 8.0],
                     GREY,
                     true,

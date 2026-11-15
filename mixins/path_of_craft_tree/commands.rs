@@ -68,7 +68,13 @@ fn answer(game: &mut Game<'_>, caller: &Caller, command: &str, ran: &mut bool) {
         return;
     };
     *ran = true;
+    // A player reads the answer in their own language; the console keeps Russian.
+    let lang = match caller {
+        Caller::Player { uuid, .. } => crate::game::pct_texts::player_lang(game, *uuid),
+        Caller::Console => crate::game::pct_lang::Lang::Ru,
+    };
     for line in lines {
+        let line = crate::game::pct_texts::tr_in(lang, &line).into_owned();
         game.native_feedback(Text::literal(line));
     }
 }

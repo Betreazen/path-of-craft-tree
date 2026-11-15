@@ -18,6 +18,8 @@ mod fx_farm_rules;
 mod fx_gather_rules;
 #[path = "mixins/path_of_craft_tree/fx_roam_rules.rs"]
 mod fx_roam_rules;
+#[path = "mixins/path_of_craft_tree/lang.rs"]
+pub mod lang;
 #[path = "mixins/path_of_craft_tree/limits.rs"]
 pub mod limits;
 
@@ -59,6 +61,57 @@ mod shipped_tree {
     fn shipped() -> Tree {
         Tree::parse(include_bytes!("mixins/path_of_craft_tree/data/tree.json"))
             .expect("data/tree.json")
+    }
+
+    fn english() -> crate::lang::Dict {
+        crate::lang::english(&[
+            include_bytes!("mixins/path_of_craft_tree/data/en-names.json"),
+            include_bytes!("mixins/path_of_craft_tree/data/en-texts.json"),
+            include_bytes!("mixins/path_of_craft_tree/data/en-ui.json"),
+        ])
+        .expect("data/en-*.json")
+    }
+
+    fn is_russian(text: &str) -> bool {
+        text.chars().any(|c| matches!(c, 'А'..='я' | 'Ё' | 'ё'))
+    }
+
+    /// A player whose game is not in Russian reads the tree in English: every text the window
+    /// shows has its English, and none of it is Russian any more.
+    #[test]
+    fn every_text_of_the_shipped_tree_has_its_english() {
+        let tree = shipped();
+        let en = english();
+        let mut missing: Vec<String> = Vec::new();
+        let mut check = |text: &str| {
+            if is_russian(text) && en.english(text).is_none() {
+                missing.push(text.to_owned());
+            }
+        };
+        for branch in tree.branches.values() {
+            check(&branch.name);
+            branch.legend.as_deref().map(&mut check);
+        }
+        for node in tree.nodes.values() {
+            check(&node.name);
+            check(&node.description);
+            node.rank_descriptions.iter().for_each(|text| check(text));
+        }
+        for title in tree.mastery.iter().flat_map(|m| &m.titles) {
+            check(title);
+        }
+        missing.sort();
+        missing.dedup();
+        assert!(missing.is_empty(), "no English for {missing:?}");
+        let translated = tree.translated(|ru| en.english(ru).unwrap_or_else(|| ru.to_owned()));
+        let russian_left = translated
+            .nodes
+            .values()
+            .filter(|node| is_russian(&node.name) || is_russian(&node.description))
+            .count();
+        assert_eq!(russian_left, 0);
+        assert_eq!(translated.nodes.len(), tree.nodes.len());
+        assert_eq!(translated.nodes[&0].name, "Start");
     }
 
     #[test]

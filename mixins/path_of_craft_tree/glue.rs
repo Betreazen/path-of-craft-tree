@@ -461,9 +461,10 @@ fn kick_silent_clients(game: &mut Game<'_>) {
         overdue
     };
     for player in overdue {
-        let reason = format!(
+        let reason = crate::game::pct_texts::trf_in(
+            crate::game::pct_texts::player_lang(game, player),
             "Для игры на этом сервере нужен мод Path-of-craft-tree (протокол {})",
-            rules::PROTOCOL
+            &[&rules::PROTOCOL],
         );
         kick(game, player, reason);
     }
@@ -474,10 +475,11 @@ fn on_hello(game: &mut Game<'_>, player: u128, data: &[u8]) {
     let protocol = rules::decode_u16(data);
     if protocol != Some(rules::PROTOCOL) {
         server().players.remove(&player);
-        let reason = format!(
+        let theirs = protocol.map_or_else(|| "?".to_owned(), |p| p.to_string());
+        let reason = crate::game::pct_texts::trf_in(
+            crate::game::pct_texts::player_lang(game, player),
             "Нужна другая версия мода Path-of-craft-tree: на сервере протокол {}, у вас {}",
-            rules::PROTOCOL,
-            protocol.map_or_else(|| "?".to_owned(), |p| p.to_string())
+            &[&rules::PROTOCOL, &theirs],
         );
         kick(game, player, reason);
         return;
@@ -592,7 +594,13 @@ fn on_respec(game: &mut Game<'_>, player: u128) {
     if level < rules::RESPEC_LEVELS {
         game.native_action_bar(
             player,
-            Text::literal("Для сброса дерева не хватает уровней опыта".to_owned()),
+            Text::literal(
+                crate::game::pct_texts::tr_in(
+                    crate::game::pct_texts::player_lang(game, player),
+                    "Для сброса дерева не хватает уровней опыта",
+                )
+                .into_owned(),
+            ),
         );
         return;
     }
@@ -853,9 +861,11 @@ fn credit(
             .branches
             .get(branch)
             .map_or(branch, |b| b.name.as_str());
+        // Only here, a few times a second at most: the player's language for the line.
+        let lang = crate::game::pct_texts::player_lang(game, player);
         game.native_action_bar(
             player,
-            Text::literal(feedback_line(tree, branch, name, xp, level, mastery)),
+            Text::literal(feedback_line(tree, lang, branch, name, xp, level, mastery)),
         );
         send_encoded_state(game, player, encoded);
         if leveled {
@@ -869,15 +879,23 @@ fn credit(
 /// mastery rank with the title it gives.
 fn feedback_line(
     tree: &Tree,
+    lang: crate::game::pct_lang::Lang,
     branch: &str,
     name: &str,
     xp: f64,
     level: u32,
     mastery: u32,
 ) -> String {
+    use crate::game::pct_texts::{tr_in, trf_in};
+    let xp = format!("{xp:.1}");
+    let name = tr_in(lang, name);
     match tree.mastery_title(branch, mastery) {
-        Some(title) => format!("+{xp:.1} опыта · {name} {level} · мастерство {mastery}: {title}"),
-        None => format!("+{xp:.1} опыта · {name} {level}"),
+        Some(title) => trf_in(
+            lang,
+            "+{} опыта · {} {} · мастерство {}: {}",
+            &[&xp, &name, &level, &mastery, &tr_in(lang, &title)],
+        ),
+        None => trf_in(lang, "+{} опыта · {} {}", &[&xp, &name, &level]),
     }
 }
 
@@ -1002,10 +1020,10 @@ pub fn on_server_message(channel: &str, data: &[u8]) {
             view.effects = Arc::default();
             view.owe_hello = true;
             view.problem = (server_protocol != Some(client_protocol())).then(|| {
-                format!(
+                let theirs = server_protocol.map_or_else(|| "?".to_owned(), |p| p.to_string());
+                crate::game::pct_texts::trf(
                     "Версия мода не совпадает: у вас {}, на сервере {}",
-                    client_protocol(),
-                    server_protocol.map_or_else(|| "?".to_owned(), |p| p.to_string())
+                    &[&client_protocol(), &theirs],
                 )
             });
         }
@@ -1014,9 +1032,14 @@ pub fn on_server_message(channel: &str, data: &[u8]) {
                 match Tree::parse(&bytes) {
                     Ok(tree) => {
                         view.effects = Arc::new(tree.effects(&view.profile));
-                        view.tree = Some(Arc::new(tree));
+                        view.tree = Some(Arc::new(crate::game::pct_texts::localized(tree)));
                     }
-                    Err(error) => view.problem = Some(format!("Дерево не прочитано: {error}")),
+                    Err(error) => {
+                        view.problem = Some(crate::game::pct_texts::trf(
+                            "Дерево не прочитано: {}",
+                            &[&error],
+                        ));
+                    }
                 }
             }
         }
@@ -1054,6 +1077,7 @@ pub fn on_command(game: &mut Game<'_>, command: &str, ran: &mut bool) {
 pub fn on_frame(game: &mut Game<'_>) {
     let _timer = crate::game::pct_perf::time(crate::game::pct_perf::Probe::ClientFrame);
     crate::game::pct_perf::report_if_due("client");
+    crate::game::pct_texts::on_client_frame(game);
     if client().owe_hello {
         let hello = client_protocol().to_le_bytes();
         if game.native_net_send_to_server(HELLO, &hello).is_ok() {

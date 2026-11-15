@@ -22,6 +22,7 @@
 - **16 профессий в 4 секторах**, 75 уровней у каждой.
 - **1200 узлов**: малые прибавки, большие умения и их усилители. 121 узел имеет по два ранга. Ветвь стоит 79–85 очков, а её 75 уровней дают 75: всё не взять, приходится выбирать.
 - **Мастерство после 75-го уровня**: опыт ветви идёт дальше, в 10 медленных рангов мастерства. Очков и силы они не дают, только титул: от «Знатока» до своего у каждой ветви, например «Владыка недр» у Шахтёра.
+- **Русский и английский.** Если игра не на русском, дерево, окно, сообщения и команды игрока показываются по-английски (словарь в `data/en-*.json`).
 - **285 эффектов**, каждый проверен в игре: копание площадью, падение дерева целиком, жила руды, автоплавка, карманный верстак, возвращение домой, рудный нюх и многое другое.
 - **Честный опыт.** Поставленный блок не даёт опыта, когда его ломаешь. Мобы из спавнера дают четверть. В творческом режиме и за команды опыта нет.
 - **Машины работают на владельца.** Механизмы других модов приносят своему владельцу половину опыта за ту же работу ([как подключить свой мод](docs/machine-reports.md)).
@@ -239,7 +240,7 @@ docs/showcase/               справочник для сайта: данны�
 Флаги: `-BuildProfile dev|performance|release` выбирает профиль сборки, `-Perf` включает счётчики времени горячих путей. Счётчики пишутся в журнал раз в 30 секунд. Лаунчер собирает на компьютере только одну нативную сборку за раз, поэтому `dev.ps1` ждёт, пока закончится чужая, и повторяет запуск, если другая сборка успела начаться первой.
 
 ```powershell
-cargo test                                  # 251 тест
+cargo test                                  # 258 тестов
 cargo bench --bench rules                   # бенчмарки criterion на профиле «ветерана»
 cargo clippy --all-targets -- -D warnings -A dead_code
 ```
@@ -271,7 +272,7 @@ cargo clippy --all-targets -- -D warnings -A dead_code
 
 ## In English
 
-Path-of-craft-tree is a native mod for [Horizon](https://github.com/horizon-rust/horizon), the Rust reimplementation of Minecraft 26.3. Sixteen professions earn experience from what you actually do (mining, farming, crafting, fighting…), and their levels pay points into a 1200-node passive tree with 285 effects; past the last level a branch keeps counting towards ten cosmetic mastery ranks and titles. The in-game text is in Russian for now. Install it from the launcher with **Mods → Add from GitHub** and this repository's link, or follow the commands in the «Установка» section above. Native mods run unsandboxed with your rights, so read the source first.
+Path-of-craft-tree is a native mod for [Horizon](https://github.com/horizon-rust/horizon), the Rust reimplementation of Minecraft 26.3. Sixteen professions earn experience from what you actually do (mining, farming, crafting, fighting…), and their levels pay points into a 1200-node passive tree with 285 effects; past the last level a branch keeps counting towards ten cosmetic mastery ranks and titles. The mod speaks English to anyone whose game is not set to Russian: the tree, the window, the messages and the player commands follow the game's language. Install it from the launcher with **Mods → Add from GitHub** and this repository's link, or follow the commands in the «Установка» section above. Native mods run unsandboxed with your rights, so read the source first.
 
 ## Лицензия
 

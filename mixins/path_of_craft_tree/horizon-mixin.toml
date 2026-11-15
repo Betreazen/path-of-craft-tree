@@ -178,6 +178,20 @@ file = "crates/horizon-client/src/game.rs"
 name = "pct_limits"
 source = "limits.rs"
 
+# English for players whose game is not in Russian: lang.rs is game-free, texts.rs embeds the
+# dictionary (data/en-*.json).
+[[module]]
+id = "lang"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_lang"
+source = "lang.rs"
+
+[[module]]
+id = "texts"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_texts"
+source = "texts.rs"
+
 [[module]]
 id = "pace_counter"
 file = "crates/horizon-client/src/game.rs"

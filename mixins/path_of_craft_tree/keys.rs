@@ -1,5 +1,6 @@
 // The tree's keys. They are listed in Options > Mods with their defaults, and a player can rebind
 // them there; `native_mod_key` reads the player's choice, so other mods' keys never have to give way.
+use crate::game::pct_texts::tr;
 use crate::game::{Game, pct_glue as glue};
 use crate::mod_api::NativeMod;
 
@@ -51,7 +52,7 @@ const KEYS: [(Key, &str, &str, &str); 8] = [
 
 const TITLE: &str = "Path-of-craft-tree";
 const DESCRIPTION: &str = "Опыт профессий за то, чем вы занимаетесь, и дерево пассивных умений на \
-                           995 узлов. Клавиша дерева и клавиши умений переназначаются здесь.";
+                           1200 узлов. Клавиша дерева и клавиши умений переназначаются здесь.";
 
 /// Whether `pressed` (a key name such as `key.keyboard.k`) is the key the player chose for `which`.
 pub fn is(game: &Game<'_>, pressed: &str, which: Key) -> bool {
@@ -67,13 +68,13 @@ pub fn on_mods(mods: &mut Vec<NativeMod>) {
     mods.push(NativeMod {
         id: glue::ID.to_owned(),
         title: TITLE.to_owned(),
-        description: DESCRIPTION.to_owned(),
+        description: tr(DESCRIPTION).into_owned(),
         keys: KEYS
             .iter()
             .map(|(_, name, label, default)| {
                 [
                     (*name).to_owned(),
-                    (*label).to_owned(),
+                    tr(label).into_owned(),
                     (*default).to_owned(),
                 ]
             })

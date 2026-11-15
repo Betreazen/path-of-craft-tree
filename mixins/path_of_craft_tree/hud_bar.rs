@@ -42,10 +42,12 @@ fn label(game: &Game<'_>, tree: &Tree, profile: &Arc<Profile>, branch: String) -
     let (level, progress) = tree.level_progress(xp);
     let info = tree.branches.get(&branch);
     let name = info.map_or(branch.as_str(), |b| b.name.as_str());
+    use crate::game::pct_texts::trf;
     let text = if level >= tree.curve.max_level {
-        format!("{name} · ур. {level}")
+        trf("{} · ур. {}", &[&name, &level])
     } else {
-        format!("{name} · ур. {level} · {:.0}%", progress * 100.0)
+        let percent = format!("{:.0}", progress * 100.0);
+        trf("{} · ур. {} · {}%", &[&name, &level, &percent])
     };
     Label {
         profile: profile.clone(),

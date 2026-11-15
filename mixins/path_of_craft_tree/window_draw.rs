@@ -6,6 +6,7 @@ use crate::game::{
     Game, native_hooks::NativeScreenView, pct_look as look, pct_paint as paint, pct_plan as plan,
     pct_rules as rules, pct_session as session, pct_window as window,
 };
+use crate::game::pct_texts::tr;
 use horizon_client::hud::HudBatch;
 use look::{Look, Shown};
 use paint::Scene;
@@ -125,7 +126,11 @@ pub fn button_at(_game: &Game<'_>, screen: &NativeScreenView<'_>) -> Option<Butt
         .rev()
         .find(|(button, rect)| {
             inside(*rect, screen.mouse)
-                && (!stats || matches!(button, Button::Bar | Button::Close | Button::Stats))
+                && (!stats
+                    || matches!(
+                        button,
+                        Button::Bar | Button::Title | Button::Close | Button::Stats
+                    ))
         })
         .map(|(button, _)| *button)
 }
@@ -260,8 +265,9 @@ fn button_row(
 ) -> f32 {
     let mut x = at[0];
     for (which, label, on) in buttons {
-        let rect = [x, at[1], game.native_text_width(label) + 2.0 * PAD, ROW_H];
-        button(game, batch, rect, label, *on, mouse);
+        let label = tr(label);
+        let rect = [x, at[1], game.native_text_width(&label) + 2.0 * PAD, ROW_H];
+        button(game, batch, rect, &label, *on, mouse);
         state.hits.push((*which, rect));
         x += rect[2] + GAP;
     }
@@ -290,8 +296,19 @@ fn panel_lines(game: &Game<'_>, batch: &mut HudBatch, panel: &Panel, at: [f32; 2
     }
 }
 
-/// `lines` with the width of the widest one.
+/// `lines` in the game's language, with the width of the widest one. Panels are kept until what
+/// they show changes, so their texts are translated here once rather than every frame.
 fn measured(game: &Game<'_>, lines: Vec<Line>) -> Panel {
+    let lines: Vec<Line> = lines
+        .into_iter()
+        .map(|line| Line {
+            cells: line
+                .cells
+                .into_iter()
+                .map(|(words, offset, colour)| (tr(&words).into_owned(), offset, colour))
+                .collect(),
+        })
+        .collect();
     let width = lines
         .iter()
         .flat_map(|line| line.cells.iter())
@@ -388,11 +405,11 @@ fn search_box(
     state.areas.push(rect);
     let found = state.found(tree, look, profile, shown);
     let (count, count_colour) = if plan::looks_like_share(&state.query) {
-        ("Enter: загрузить".to_owned(), AQUA)
+        (tr("Enter: загрузить").into_owned(), AQUA)
     } else if !found.active {
         (String::new(), GREY)
     } else if found.ids.is_empty() {
-        ("нет".to_owned(), RED)
+        (tr("нет").into_owned(), RED)
     } else {
         let at = state.current.map_or(0, |c| c + 1);
         (format!("{at}/{}", found.ids.len()), GREY)
@@ -413,7 +430,7 @@ fn search_box(
             text(game, batch, "_", [x, inner[1]], WHITE);
         }
     } else {
-        text(game, batch, "Поиск: печатайте", inner, DARK);
+        text(game, batch, &tr("Поиск: печатайте"), inner, DARK);
     }
 }
 
@@ -442,10 +459,9 @@ fn plan_panel(game: &Game<'_>, look: &Look, view: &PlanView) -> Panel {
         return measured(game, lines);
     }
     lines.push(Line::text(
-        format!(
+        crate::game::pct_texts::trf(
             "План: {} {}",
-            cost.ranks,
-            window::ranks_word(cost.ranks as usize)
+            &[&cost.ranks, &window::ranks_word(cost.ranks as usize)],
         ),
         WHITE,
     ));
@@ -617,7 +633,46 @@ fn stats_panel(
     } else if !branches.is_empty() {
         lines.push(Line::text("Источники опыта сервер пока не прислал", GREY));
     }
+    mastery_lines(tree, look, profile, &mut lines);
     measured(game, lines)
+}
+
+/// Mastery after the last level: the title shown and each mastered branch's rank.
+fn mastery_lines(tree: &Tree, look: &Look, profile: &Profile, lines: &mut Vec<Line>) {
+    let ranked = tree.ranked_branches(profile);
+    if ranked.is_empty() {
+        return;
+    }
+    lines.push(Line::text("Мастерство", GOLD));
+    if let Some(title) = tree.shown_title(profile) {
+        let how = if profile.title.is_some() {
+            "выбран"
+        } else {
+            "сам"
+        };
+        lines.push(Line::text(
+            crate::game::pct_texts::trf("Титул: {} ({})", &[&title.text, &tr(how)]),
+            WHITE,
+        ));
+    }
+    for (branch, rank) in ranked {
+        let (name, colour) = branch_name(look, &branch);
+        let xp = profile.xp.get(&branch).copied().unwrap_or(0.0);
+        let (_, progress) = tree.mastery_progress(xp);
+        let title = tree.mastery_title(&branch, rank).unwrap_or_default();
+        let step = if rank >= tree.max_mastery() {
+            "предел".to_owned()
+        } else {
+            format!("{:.0}%", progress * 100.0)
+        };
+        lines.push(Line {
+            cells: vec![
+                (name, 0.0, colour),
+                (format!("ранг {rank} ({step})"), 110.0, WHITE),
+                (title, 250.0, GREY),
+            ],
+        });
+    }
 }
 
 fn statistics(
@@ -630,7 +685,13 @@ fn statistics(
     screen: &NativeScreenView<'_>,
 ) {
     let seconds = state.started.elapsed().as_secs();
-    let key = (state.session.revision, seconds / 10, state.bar);
+    // A new profile (a chosen title, a new rank) rebuilds the page too.
+    let key = (
+        state.session.revision,
+        seconds / 10,
+        state.bar,
+        Arc::as_ptr(profile) as usize,
+    );
     let panel = match &state.stats_lines {
         Some((known, panel)) if *known == key => panel.clone(),
         _ => {
@@ -654,7 +715,11 @@ fn statistics(
         "Полоса опыта на экране: выкл"
     };
     let on = state.bar;
-    let buttons = [(Button::Bar, bar, on), (Button::Close, "Закрыть", false)];
+    let mut buttons = vec![(Button::Bar, bar, on)];
+    if tree.next_title_choice(profile).is_some() {
+        buttons.push((Button::Title, "Сменить титул", false));
+    }
+    buttons.push((Button::Close, "Закрыть", false));
     let at = [x + PAD, y + height - PAD - ROW_H];
     button_row(game, batch, state, at, &buttons, screen.mouse);
 }

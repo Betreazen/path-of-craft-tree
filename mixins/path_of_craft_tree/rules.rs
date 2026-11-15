@@ -648,6 +648,58 @@ impl Tree {
         })
     }
 
+    /// The tree with every text a player reads passed through `tr`: branch names and legends,
+    /// node names, descriptions and rank texts, mastery titles. Numbers and ids stay as they are.
+    pub fn translated(&self, tr: impl Fn(&str) -> String) -> Tree {
+        let mut tree = self.clone();
+        for branch in tree.branches.values_mut() {
+            branch.name = tr(&branch.name);
+            branch.legend = branch.legend.as_deref().map(&tr);
+        }
+        for node in tree.nodes.values_mut() {
+            node.name = tr(&node.name);
+            if !node.description.is_empty() {
+                node.description = tr(&node.description);
+            }
+            for text in &mut node.rank_descriptions {
+                *text = tr(text);
+            }
+        }
+        if let Some(mastery) = tree.mastery.as_mut() {
+            for title in &mut mastery.titles {
+                *title = tr(title);
+            }
+        }
+        tree
+    }
+
+    /// The branches with a mastery rank, in the tree's order.
+    pub fn ranked_branches(&self, profile: &Profile) -> Vec<(String, u32)> {
+        self.branches
+            .keys()
+            .map(|branch| (branch.clone(), self.mastery_rank(profile, branch)))
+            .filter(|(_, rank)| *rank > 0)
+            .collect()
+    }
+
+    /// The window's title button: the choice after the current one. The automatic title comes
+    /// first, then each branch with a mastery rank, then the automatic title again. `None` when no
+    /// branch has a rank; `Some(None)` asks for the automatic title.
+    pub fn next_title_choice(&self, profile: &Profile) -> Option<Option<String>> {
+        let ranked = self.ranked_branches(profile);
+        if ranked.is_empty() {
+            return None;
+        }
+        let current = profile
+            .title
+            .as_deref()
+            .and_then(|chosen| ranked.iter().position(|(branch, _)| branch == chosen));
+        Some(match current {
+            None => Some(ranked[0].0.clone()),
+            Some(at) => ranked.get(at + 1).map(|(branch, _)| branch.clone()),
+        })
+    }
+
     pub fn branch_level(&self, profile: &Profile, branch: &str) -> u32 {
         self.level_progress(profile.xp.get(branch).copied().unwrap_or(0.0))
             .0
@@ -1412,6 +1464,21 @@ mod tests {
         );
         // A branch without a legend keeps the generic title of the highest rank.
         assert_eq!(tree.mastery_title("fishing", 3).as_deref(), Some("Мастер"));
+    }
+
+    #[test]
+    fn the_window_s_title_button_cycles_ranked_branches_then_automatic() {
+        let (tree, none) = mastered(&[("mining", 10.0)]);
+        assert_eq!(tree.next_title_choice(&none), None, "nothing to choose");
+        let (tree, profile) = mastered(&[("mining", 200.0), ("fishing", 400.0)]);
+        // Branch order is the tree's: fishing, then mining.
+        let first = tree.next_title_choice(&profile).unwrap();
+        assert_eq!(first.as_deref(), Some("fishing"));
+        let fishing = tree.choose_title(&profile, first.as_deref()).unwrap();
+        let second = tree.next_title_choice(&fishing).unwrap();
+        assert_eq!(second.as_deref(), Some("mining"));
+        let mining = tree.choose_title(&fishing, second.as_deref()).unwrap();
+        assert_eq!(tree.next_title_choice(&mining), Some(None), "back to automatic");
     }
 
     #[test]

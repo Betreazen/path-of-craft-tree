@@ -45,6 +45,8 @@ pub fn on_server_tick(game: &mut Game<'_>, ticks: u32) {
     }
     let outbox = std::mem::take(&mut state().outbox);
     for (player, line) in outbox {
+        let lang = crate::game::pct_texts::player_lang(game, player);
+        let line = crate::game::pct_texts::tr_in(lang, &line).into_owned();
         game.native_tell(player, Text::literal(line));
     }
 }
