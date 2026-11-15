@@ -269,6 +269,8 @@ impl Spots {
 }
 
 fn run(game: &mut Game<'_>, filter: &str) {
+    // The expected numbers are the tree's own: the run ignores the server owner's multipliers.
+    let _defaults = crate::game::pct_settings::TestSettings::new(Default::default());
     let Some(loaded) = glue::current_tree() else {
         game.native_feedback(Text::literal(format!("{COMMAND}: the tree is not loaded")));
         return;
@@ -281,6 +283,9 @@ fn run(game: &mut Game<'_>, filter: &str) {
         .filter(|s| s.name.contains(filter))
     {
         outcome.record(scenario.name, check(game, tree, &scenario));
+    }
+    for (name, result) in crate::game::pct_selftest_server::run(game, tree, filter) {
+        outcome.record(name, result);
     }
     if TAGGED_SCENARIOS.iter().any(|name| name.contains(filter)) {
         // SoulsCraft's contract needs a real mob, and a fresh world with nobody on has no chunk
@@ -353,6 +358,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
     let Some(mut run) = pending().take() else {
         return;
     };
+    let _defaults = crate::game::pct_settings::TestSettings::new(Default::default());
     let Some(loaded) = glue::current_tree() else {
         return;
     };

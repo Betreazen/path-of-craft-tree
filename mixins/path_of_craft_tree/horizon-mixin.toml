@@ -116,6 +116,61 @@ file = "crates/horizon-client/src/game.rs"
 name = "pct_mining"
 source = "mining.rs"
 
+# Server owners' settings, admin commands, the leaderboard and group play.
+[[module]]
+id = "settings_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_settings_rules"
+source = "settings_rules.rs"
+
+[[module]]
+id = "settings"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_settings"
+source = "settings.rs"
+
+[[module]]
+id = "command_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_command_rules"
+source = "command_rules.rs"
+
+[[module]]
+id = "commands"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_commands"
+source = "commands.rs"
+
+[[module]]
+id = "group_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_group_rules"
+source = "group_rules.rs"
+
+[[module]]
+id = "groups"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_groups"
+source = "groups.rs"
+
+[[module]]
+id = "board_rules"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_board_rules"
+source = "board_rules.rs"
+
+[[module]]
+id = "leaderboard"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_leaderboard"
+source = "leaderboard.rs"
+
+[[module]]
+id = "selftest_server"
+file = "crates/horizon-client/src/game.rs"
+name = "pct_selftest_server"
+source = "selftest_server.rs"
+
 # Server half.
 [[injection]]
 id = "net_from_client"
@@ -273,6 +328,20 @@ kind = "HEAD"
 helper = "console_command.rs"
 bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "command", ty = "&str", value = "command" },
+  { name = "ran", ty = "&mut bool", value = "&mut *ran" },
+]
+
+# `/pct`: leaderboard consent, group play and the admin commands.
+[[injection]]
+id = "perform_command"
+hook = "perform_command"
+hook_version = 1
+kind = "HEAD"
+helper = "perform_command.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "&crate::mod_api::NativeServerPlayer", value = "player" },
   { name = "command", ty = "&str", value = "command" },
   { name = "ran", ty = "&mut bool", value = "&mut *ran" },
 ]

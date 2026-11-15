@@ -148,6 +148,35 @@ struct RawTree {
     nodes: Vec<Node>,
 }
 
+/// The server owner's multipliers on earned experience (server settings, settings_rules.rs). The
+/// default changes nothing: every factor is 1 and the tree's own general share is used.
+#[derive(Debug, Clone, PartialEq)]
+pub struct XpScale {
+    /// Multiplies all experience every branch earns.
+    pub global: f64,
+    /// Multiplies what one branch earns, on top of `global`; branches not named stay at 1.
+    pub branches: BTreeMap<String, f64>,
+    /// Replaces the tree's `general_share` when set.
+    pub general_share: Option<f64>,
+}
+
+impl Default for XpScale {
+    fn default() -> Self {
+        XpScale {
+            global: 1.0,
+            branches: BTreeMap::new(),
+            general_share: None,
+        }
+    }
+}
+
+impl XpScale {
+    /// What experience for `branch` is multiplied by.
+    pub fn factor(&self, branch: &str) -> f64 {
+        self.global * self.branches.get(branch).copied().unwrap_or(1.0)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tree {
     pub start: u16,
@@ -164,6 +193,8 @@ pub struct Tree {
     pub nodes: BTreeMap<u16, Node>,
     /// For each branch, the effect key that grows with its level.
     pub level_bonus: BTreeMap<String, String>,
+    /// The server's multipliers; the default on a client and in every freshly parsed tree.
+    pub scale: XpScale,
     /// The total experience at the end of each level, from the first: levels are looked up here.
     level_ends: Vec<f64>,
 }
@@ -240,6 +271,11 @@ pub struct CombatSummary {
     pub v: u32,
     pub levels: BTreeMap<String, [u32; 2]>,
     pub ranks: BTreeMap<String, [u32; 2]>,
+    /// Added after 0.4.11 without a new `v` (readers ignore fields they do not know): the same pairs
+    /// for all sixteen branches, and the general scale's `[level, max_level]`.
+    pub all_levels: BTreeMap<String, [u32; 2]>,
+    pub all_ranks: BTreeMap<String, [u32; 2]>,
+    pub general: [u32; 2],
 }
 
 /// What a player has earned and spent.
@@ -447,6 +483,7 @@ impl Tree {
             lists: raw.lists,
             numbers: raw.numbers,
             nodes: with_symmetric_links(nodes),
+            scale: XpScale::default(),
             level_ends,
         })
     }
@@ -637,15 +674,42 @@ impl Tree {
         next
     }
 
-    /// `award_main` on the profile itself, without copying it.
+    /// `award_main` on the profile itself, without copying it. The server's multipliers apply,
+    /// and the general scale gets its share of the multiplied amount.
     pub fn add_main_xp(&self, profile: &mut Profile, branch: &str, amount: f64) {
+        let amount = amount * self.scale.factor(branch);
         add_xp(&mut profile.xp, branch, amount);
-        profile.general_xp += amount * self.general_share;
+        profile.general_xp += amount * self.general_share_in_use();
     }
 
     /// `award_cross` on the profile itself, without copying it.
     pub fn add_cross_xp(&self, profile: &mut Profile, branch: &str, amount: f64) {
-        add_xp(&mut profile.xp, branch, amount * self.cross_share);
+        add_xp(
+            &mut profile.xp,
+            branch,
+            amount * self.cross_share * self.scale.factor(branch),
+        );
+    }
+
+    /// The general scale's share of main experience: the server's override, else the tree's.
+    pub fn general_share_in_use(&self) -> f64 {
+        self.scale.general_share.unwrap_or(self.general_share)
+    }
+
+    /// The same tree with the server's multipliers `scale`.
+    pub fn with_scale(&self, scale: XpScale) -> Tree {
+        Tree {
+            scale,
+            ..self.clone()
+        }
+    }
+
+    /// The total experience at which `level` starts, capped at the highest level.
+    pub fn xp_at_level(&self, level: u32) -> f64 {
+        let level = level.min(self.curve.max_level) as usize;
+        level
+            .checked_sub(1)
+            .map_or(0.0, |index| self.level_ends[index])
     }
 
     /// The branch and experience for a loot table broken with `tool`.
@@ -752,32 +816,47 @@ impl Tree {
 
     /// What other mods (SoulsCraft) scale their enemies by: for each combat branch, its level with
     /// the highest level, and its working ranks with all the ranks it has. Switched-off big nodes
-    /// and their upgrades give no strength, so they do not count.
+    /// and their upgrades give no strength, so they do not count. The same pairs for every branch
+    /// and the general level go into the fields added later (`all_levels`, `all_ranks`, `general`).
     pub fn combat_summary(&self, profile: &Profile) -> CombatSummary {
         let off = self.switched_off(profile);
-        let mut levels = BTreeMap::new();
-        let mut ranks = BTreeMap::new();
-        for branch in COMBAT_BRANCHES {
-            let level = self.branch_level(profile, branch);
-            levels.insert(branch.to_owned(), [level, self.curve.max_level]);
-            let (working, all) = self
-                .nodes
-                .values()
-                .filter(|node| node.branch.as_deref() == Some(branch))
-                .fold((0, 0), |(working, all), node| {
-                    let rank = if off.contains(&node.id) {
-                        0
-                    } else {
-                        u32::from(profile.rank(node.id))
-                    };
-                    (working + rank, all + u32::from(node.ranks))
-                });
-            ranks.insert(branch.to_owned(), [working, all]);
+        let max = self.curve.max_level;
+        let all_levels: BTreeMap<String, [u32; 2]> = self
+            .branches
+            .keys()
+            .map(|branch| (branch.clone(), [self.branch_level(profile, branch), max]))
+            .collect();
+        // One pass over the nodes for all branches.
+        let mut all_ranks: BTreeMap<String, [u32; 2]> = self
+            .branches
+            .keys()
+            .map(|branch| (branch.clone(), [0, 0]))
+            .collect();
+        for node in self.nodes.values() {
+            let Some(pair) = node.branch.as_ref().and_then(|b| all_ranks.get_mut(b)) else {
+                continue;
+            };
+            if !off.contains(&node.id) {
+                pair[0] += u32::from(profile.rank(node.id));
+            }
+            pair[1] += u32::from(node.ranks);
         }
+        let combat = |table: &BTreeMap<String, [u32; 2]>, empty: [u32; 2]| {
+            COMBAT_BRANCHES
+                .iter()
+                .map(|branch| {
+                    let pair = table.get(*branch).copied().unwrap_or(empty);
+                    ((*branch).to_owned(), pair)
+                })
+                .collect::<BTreeMap<_, _>>()
+        };
         CombatSummary {
             v: SUMMARY_VERSION,
-            levels,
-            ranks,
+            levels: combat(&all_levels, [0, max]),
+            ranks: combat(&all_ranks, [0, 0]),
+            all_levels,
+            all_ranks,
+            general: [self.general_level(profile), max],
         }
     }
 
