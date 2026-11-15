@@ -1,6 +1,11 @@
 // Builds the game-free modules of the mod on their own, so `cargo test` runs in seconds.
 #[path = "mixins/path_of_craft_tree/blueprints.rs"]
 mod blueprints;
+
+#[path = "mixins/path_of_craft_tree/board_rules.rs"]
+pub mod board_rules;
+#[path = "mixins/path_of_craft_tree/command_rules.rs"]
+pub mod command_rules;
 #[path = "mixins/path_of_craft_tree/effect_rules.rs"]
 mod effect_rules;
 #[path = "mixins/path_of_craft_tree/find.rs"]
@@ -15,6 +20,9 @@ mod fx_gather_rules;
 mod fx_roam_rules;
 #[path = "mixins/path_of_craft_tree/limits.rs"]
 pub mod limits;
+
+#[path = "mixins/path_of_craft_tree/group_rules.rs"]
+pub mod group_rules;
 #[path = "mixins/path_of_craft_tree/look.rs"]
 pub mod look;
 #[path = "mixins/path_of_craft_tree/machine_rules.rs"]
@@ -29,6 +37,9 @@ pub mod plan;
 pub mod rules;
 #[path = "mixins/path_of_craft_tree/session.rs"]
 pub mod session;
+
+#[path = "mixins/path_of_craft_tree/settings_rules.rs"]
+pub mod settings_rules;
 #[path = "mixins/path_of_craft_tree/view.rs"]
 pub mod view;
 #[path = "mixins/path_of_craft_tree/visits.rs"]
@@ -614,7 +625,7 @@ mod shipped_tree {
         assert_eq!(json["levels"]["melee"][1], tree.curve.max_level);
         assert_eq!(
             json.as_object().unwrap().keys().collect::<Vec<_>>(),
-            ["levels", "ranks", "v"]
+            ["all_levels", "all_ranks", "general", "levels", "ranks", "v"]
         );
     }
 
@@ -717,5 +728,244 @@ mod shipped_tree {
             }
         }
         assert_eq!(seen.len(), tree.nodes.len());
+    }
+}
+
+// The server owner's settings, admin commands, the leaderboard and the wider summary, on the
+// shipped tree.
+#[cfg(test)]
+mod server_slice {
+    use crate::board_rules::{self, Board};
+    use crate::command_rules::{self, Admin};
+    use crate::rules::{Profile, Tree, XpScale};
+    use std::collections::BTreeMap;
+
+    fn shipped() -> Tree {
+        Tree::parse(include_bytes!("mixins/path_of_craft_tree/data/tree.json"))
+            .expect("data/tree.json")
+    }
+
+    fn earned(tree: &Tree) -> Profile {
+        let mut profile = tree.new_profile();
+        tree.add_main_xp(&mut profile, "mining", 1234.5);
+        tree.add_cross_xp(&mut profile, "smithing", 77.25);
+        tree.add_main_xp(&mut profile, "melee", 0.1);
+        profile
+    }
+
+    #[test]
+    fn the_default_scale_pays_exactly_what_the_tree_says() {
+        let tree = shipped();
+        assert_eq!(tree.scale, XpScale::default());
+        let profile = earned(&tree);
+        assert_eq!(profile.xp["mining"], 1234.5);
+        assert_eq!(profile.xp["smithing"], 77.25 * tree.cross_share);
+        assert_eq!(profile.xp["melee"], 0.1);
+        let general = 1234.5 * tree.general_share + 0.1 * tree.general_share;
+        assert_eq!(profile.general_xp, general);
+        let same = tree.with_scale(XpScale::default());
+        assert_eq!(earned(&same), profile);
+    }
+
+    #[test]
+    fn multipliers_scale_main_cross_and_general_experience() {
+        let tree = shipped().with_scale(XpScale {
+            global: 2.0,
+            branches: BTreeMap::from([("mining".to_owned(), 1.5), ("smithing".to_owned(), 0.0)]),
+            general_share: Some(0.5),
+        });
+        let mut profile = tree.new_profile();
+        tree.add_main_xp(&mut profile, "mining", 10.0);
+        tree.add_cross_xp(&mut profile, "smithing", 10.0);
+        tree.add_cross_xp(&mut profile, "crafting", 10.0);
+        assert_eq!(profile.xp["mining"], 30.0);
+        assert_eq!(profile.xp["smithing"], 0.0);
+        assert_eq!(profile.xp["crafting"], 10.0 * tree.cross_share * 2.0);
+        // The general scale gets its share of the multiplied main experience only.
+        assert_eq!(profile.general_xp, 15.0);
+        assert_eq!(tree.general_share_in_use(), 0.5);
+    }
+
+    #[test]
+    fn levels_start_where_the_curve_says() {
+        let tree = shipped();
+        assert_eq!(tree.xp_at_level(0), 0.0);
+        for level in 1..=tree.curve.max_level {
+            let xp = tree.xp_at_level(level);
+            assert_eq!(tree.level_progress(xp).0, level, "level {level}");
+            assert_eq!(tree.level_progress(xp - 0.5).0, level - 1, "level {level}");
+        }
+        let top = tree.xp_at_level(tree.curve.max_level);
+        assert_eq!(tree.xp_at_level(tree.curve.max_level + 5), top);
+    }
+
+    #[test]
+    fn the_summary_keeps_its_combat_fields_and_adds_every_branch() {
+        let tree = shipped();
+        let mut profile = tree.new_profile();
+        profile.xp.insert("mining".to_owned(), tree.xp_at_level(12));
+        profile.xp.insert("melee".to_owned(), tree.xp_at_level(3));
+        profile.general_xp = tree.xp_at_level(2);
+        let summary = tree.combat_summary(&profile);
+        let json = serde_json::to_value(&summary).unwrap();
+        assert_eq!(json["v"], 1);
+        let keys = |field: &str| {
+            json[field]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(keys("levels"), ["archery", "defense", "melee"]);
+        assert_eq!(keys("ranks"), ["archery", "defense", "melee"]);
+        assert_eq!(json["levels"]["melee"][0], 3);
+        let max = tree.curve.max_level;
+        assert_eq!(summary.all_levels.len(), 16);
+        assert_eq!(summary.all_ranks.len(), 16);
+        assert_eq!(summary.all_levels["mining"], [12, max]);
+        assert_eq!(summary.all_levels["fishing"], [0, max]);
+        assert_eq!(summary.general, [2, max]);
+        for branch in crate::rules::COMBAT_BRANCHES {
+            assert_eq!(summary.all_levels[branch], summary.levels[branch]);
+            assert_eq!(summary.all_ranks[branch], summary.ranks[branch]);
+        }
+        for (branch, [learned, all]) in &summary.all_ranks {
+            let total: u32 = tree
+                .nodes
+                .values()
+                .filter(|n| n.branch.as_deref() == Some(branch.as_str()))
+                .map(|n| u32::from(n.ranks))
+                .sum();
+            assert_eq!((*learned, *all), (0, total), "{branch}");
+        }
+    }
+
+    fn xp(branch: &str, amount: f64) -> Admin {
+        Admin::Xp {
+            player: "x".to_owned(),
+            branch: branch.to_owned(),
+            amount,
+        }
+    }
+
+    fn level(branch: &str, level: u32) -> Admin {
+        Admin::Level {
+            player: "x".to_owned(),
+            branch: branch.to_owned(),
+            level,
+        }
+    }
+
+    #[test]
+    fn admin_xp_gives_takes_and_never_goes_below_zero() {
+        let tree = shipped();
+        let give = |profile: &Profile, branch: &str, amount: f64| {
+            command_rules::apply(&tree, profile, &xp(branch, amount))
+        };
+        let profile = give(&tree.new_profile(), "mining", 500.0).unwrap();
+        assert_eq!(profile.xp["mining"], 500.0);
+        // Exact numbers: no multiplier and no general share.
+        assert_eq!(profile.general_xp, 0.0);
+        let profile = give(&profile, "mining", -200.0).unwrap();
+        assert_eq!(profile.xp["mining"], 300.0);
+        let profile = give(&profile, "mining", -1000.0).unwrap();
+        assert_eq!(profile.xp["mining"], 0.0);
+        let profile = give(&profile, "general", 40.0).unwrap();
+        assert_eq!(profile.general_xp, 40.0);
+        assert!(give(&profile, "minign", 1.0).is_err());
+    }
+
+    #[test]
+    fn admin_level_sets_the_level_and_taking_levels_gives_back_nodes() {
+        let tree = shipped();
+        let set = |profile: &Profile, branch: &str, to: u32| {
+            command_rules::apply(&tree, profile, &level(branch, to))
+        };
+        let profile = set(&tree.new_profile(), "mining", 20).unwrap();
+        assert_eq!(tree.branch_level(&profile, "mining"), 20);
+        let profile = set(&profile, "general", 4).unwrap();
+        assert_eq!(tree.general_level(&profile), 4);
+        assert!(set(&profile, "mining", tree.curve.max_level + 1).is_err());
+        // Learn what the points pay for, then take the levels away: the nodes go.
+        let mut learned = profile.clone();
+        while let Some(node) = tree
+            .nodes
+            .values()
+            .find(|n| tree.can_allocate(&learned, n.id).is_ok())
+        {
+            learned = tree.allocate(&learned, node.id).unwrap();
+        }
+        assert!(learned.ranks.len() > 1, "nothing learned");
+        let lowered = set(&set(&learned, "mining", 0).unwrap(), "general", 0).unwrap();
+        assert_eq!(lowered.ranks, tree.new_profile().ranks);
+    }
+
+    #[test]
+    fn admin_reset_refunds_every_node_and_keeps_the_experience() {
+        let tree = shipped();
+        let mut profile = tree.new_profile();
+        profile.xp.insert("mining".to_owned(), tree.xp_at_level(10));
+        let node = tree
+            .nodes
+            .values()
+            .find(|n| tree.can_allocate(&profile, n.id).is_ok())
+            .unwrap()
+            .id;
+        let profile = tree.allocate(&profile, node).unwrap();
+        let reset = Admin::Reset {
+            player: "x".to_owned(),
+        };
+        let reset = command_rules::apply(&tree, &profile, &reset).unwrap();
+        assert_eq!(reset.ranks, tree.new_profile().ranks);
+        assert_eq!(reset.xp, profile.xp);
+        let lines = command_rules::describe(&tree, &reset);
+        assert_eq!(lines.len(), 18);
+        assert!(
+            lines.iter().any(|l| l.contains("(mining): уровень 10")),
+            "{lines:#?}"
+        );
+    }
+
+    #[test]
+    fn a_leaderboard_row_has_every_branch_and_the_total() {
+        let tree = shipped();
+        let mut profile = tree.new_profile();
+        profile.xp.insert("mining".to_owned(), tree.xp_at_level(7));
+        profile.xp.insert("fishing".to_owned(), tree.xp_at_level(5));
+        let row = board_rules::row(&tree, &profile, 0xabc, "Steve", 1_700_000_000);
+        assert_eq!(row.uuid, "00000000000000000000000000000abc");
+        assert_eq!(row.levels.len(), 16);
+        assert_eq!(row.levels["mining"], 7);
+        assert_eq!(row.total, 12);
+        assert_eq!(row.general, 0);
+        assert_eq!(row.updated, 1_700_000_000);
+    }
+
+    #[test]
+    fn the_leaderboard_keeps_one_row_per_player_sorted_by_total() {
+        let tree = shipped();
+        let with = |mining: u32| {
+            let mut p = tree.new_profile();
+            p.xp.insert("mining".to_owned(), tree.xp_at_level(mining));
+            p
+        };
+        let mut board = Board::default();
+        board.upsert(board_rules::row(&tree, &with(3), 1, "Bea", 10));
+        board.upsert(board_rules::row(&tree, &with(9), 2, "Al", 10));
+        board.upsert(board_rules::row(&tree, &with(3), 3, "Ann", 10));
+        board.upsert(board_rules::row(&tree, &with(5), 1, "Bea", 20));
+        assert!(board.has(1));
+        assert_eq!(board.players.len(), 3);
+        let read = Board::parse(&board.encode(&tree, 30).unwrap()).unwrap();
+        let order: Vec<&str> = read.players.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(order, ["Al", "Bea", "Ann"]);
+        assert_eq!(read.v, 1);
+        assert_eq!(read.updated, 30);
+        assert_eq!(read.max_level, tree.curve.max_level);
+        assert_eq!(read.branches["mining"], "Шахтёр");
+        assert!(board.remove(2));
+        assert!(!board.remove(2));
+        assert!(!board.has(2));
     }
 }

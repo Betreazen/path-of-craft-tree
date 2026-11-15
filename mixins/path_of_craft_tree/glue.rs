@@ -134,10 +134,33 @@ fn read_tree_file() -> Result<Vec<u8>, String> {
     std::fs::read(path).map_err(|e| e.to_string())
 }
 
+/// `tree` with the server owner's experience multipliers (settings.rs).
+fn configured(mut tree: Tree) -> Tree {
+    tree.scale = crate::game::pct_settings::scale_for(&tree);
+    tree
+}
+
+/// Puts the settings' multipliers into the tree in use, after the settings changed.
+pub fn apply_settings() {
+    let Some(loaded) = current_tree() else {
+        return;
+    };
+    let scale = crate::game::pct_settings::scale_for(&loaded.tree);
+    if loaded.tree.scale == scale {
+        return;
+    }
+    let tree = Arc::new(loaded.tree.with_scale(scale));
+    if let Some(current) = server().loaded.as_mut() {
+        if Arc::ptr_eq(&current.tree, &loaded.tree) {
+            current.tree = tree;
+        }
+    }
+}
+
 fn built_in() -> Option<Loaded> {
     match Tree::parse(BUILT_IN_TREE) {
         Ok(tree) => Some(Loaded {
-            tree: Arc::new(tree),
+            tree: Arc::new(configured(tree)),
             bytes: Arc::new(BUILT_IN_TREE.to_vec()),
             modified: None,
         }),
@@ -150,7 +173,7 @@ fn built_in() -> Option<Loaded> {
 
 fn parse_external(modified: Option<SystemTime>) -> Result<Loaded, String> {
     let bytes = read_tree_file()?;
-    let tree = Tree::parse(&bytes)?;
+    let tree = configured(Tree::parse(&bytes)?);
     Ok(Loaded {
         tree: Arc::new(tree),
         bytes: Arc::new(bytes),
@@ -325,6 +348,7 @@ fn save_everything(game: &Game<'_>) {
     }
     save_placed(game);
     crate::game::pct_fx_craft_build::save_blueprints(game);
+    crate::game::pct_leaderboard::on_save(game);
 }
 
 /// Writes `bytes` to `path` atomically, creating its folder first.
@@ -357,6 +381,8 @@ fn forget_world() {
     crate::game::pct_actions::forget_world();
     crate::game::pct_fx_craft_build::forget_world();
     crate::game::pct_pace_log::forget_world();
+    crate::game::pct_groups::forget_world();
+    crate::game::pct_leaderboard::forget_world();
 }
 
 /// The folder a region's placed blocks are read from.
@@ -411,6 +437,9 @@ pub fn on_logout(game: &mut Game<'_>, player: u128) {
     crate::game::pct_fx_craft_build::save_blueprints(game);
     crate::game::pct_actions::save_chunks(game, player);
     crate::game::pct_actions::forget_player(player);
+    crate::game::pct_groups::forget_player(player);
+    // The board keeps the levels a leaving player had, not those of the last periodic save.
+    crate::game::pct_leaderboard::on_save(game);
     let mut state = server();
     state.players.remove(&player);
     state.awaiting_hello.remove(&player);
@@ -531,7 +560,7 @@ fn replace_profile(game: &mut Game<'_>, player: u128, loaded: &Loaded, next: Pro
     send_state(game, player, &next);
 }
 
-fn current_profile(player: u128) -> Option<Profile> {
+pub fn current_profile(player: u128) -> Option<Profile> {
     server()
         .players
         .get(&player)
@@ -697,7 +726,48 @@ pub fn detach_test_player(player: u128) {
     }
 }
 
-/// Grants experience and tells the player about it, at most a few times a second.
+/// A player's profile for the admin commands, and whether they are online: the one in play, else
+/// the saved one. A player never saved has none.
+pub fn admin_profile(game: &Game<'_>, player: u128) -> Result<(Profile, bool), String> {
+    let loaded = current_tree().ok_or("the tree is not loaded")?;
+    if let Some(profile) = current_profile(player) {
+        return Ok((profile, true));
+    }
+    let path = state_file(game, player).ok_or("no world is open")?;
+    if !path.exists() {
+        return Err("этот игрок ещё не играл с деревом".to_owned());
+    }
+    let profile = read_saved_profile(&path, &loaded.tree).ok_or("профиль игрока не читается")?;
+    Ok((profile, false))
+}
+
+/// Admin commands: changes a player's profile with `edit`, giving it back before and after. An
+/// online player's change takes effect at once, as a node bought does; an offline player's file is
+/// rewritten. A pretend owner of the self-test only changes in memory.
+pub fn edit_profile(
+    game: &mut Game<'_>,
+    player: u128,
+    edit: impl FnOnce(&Tree, &Profile) -> Result<Profile, String>,
+) -> Result<(Profile, Profile), String> {
+    let loaded = current_tree().ok_or("the tree is not loaded")?;
+    let (before, online) = admin_profile(game, player)?;
+    let after = edit(&loaded.tree, &before)?;
+    if !online {
+        write_profile(game, player, &after)?;
+    } else if is_test_player(player) {
+        if let Some(entry) = server().players.get_mut(&player) {
+            entry.effects = Arc::new(loaded.tree.effects(&after));
+            entry.summary_due = true;
+            entry.profile = after.clone();
+        }
+    } else {
+        replace_profile(game, player, &loaded, after.clone());
+    }
+    Ok((before, after))
+}
+
+/// Grants experience and tells the player about it, at most a few times a second. Members of the
+/// player's group nearby get their share of `gained` (groups.rs).
 pub fn grant(
     game: &mut Game<'_>,
     tree: &Tree,
@@ -706,11 +776,34 @@ pub fn grant(
     change: impl FnOnce(&Tree, &mut Profile),
     gained: f64,
 ) {
+    if credit(game, tree, player, branch, change, gained) {
+        crate::game::pct_groups::share(game, tree, player, branch, gained);
+    }
+}
+
+/// A group member's share of another's experience: main experience of the same branch, paid as a
+/// grant of its own that never passes a share on.
+pub fn credit_share(game: &mut Game<'_>, tree: &Tree, player: u128, branch: &str, amount: f64) {
+    let change = |tree: &Tree, profile: &mut Profile| tree.add_main_xp(profile, branch, amount);
+    credit(game, tree, player, branch, change, amount);
+}
+
+/// `grant` without the group's shares; false when the player is not online.
+fn credit(
+    game: &mut Game<'_>,
+    tree: &Tree,
+    player: u128,
+    branch: &str,
+    change: impl FnOnce(&Tree, &mut Profile),
+    gained: f64,
+) -> bool {
     let _timer = crate::game::pct_perf::time(crate::game::pct_perf::Probe::Grant);
+    // What the player is told includes the server's multipliers.
+    let gained = gained * tree.scale.factor(branch);
     let report = {
         let mut state = server();
         let Some(entry) = state.players.get_mut(&player) else {
-            return;
+            return false;
         };
         // Only the experience table is kept from before; the profile changes in place.
         let before = entry.profile.xp.clone();
@@ -753,7 +846,7 @@ pub fn grant(
         }
     };
     if is_test_player(player) {
-        return;
+        return true;
     }
     if let Some((xp, encoded, leveled, level, mastery)) = report {
         let name = tree
@@ -769,6 +862,7 @@ pub fn grant(
             save_player(game, player);
         }
     }
+    true
 }
 
 /// The line over the hotbar after experience: the branch's level, and past the last level its
@@ -876,6 +970,7 @@ pub fn on_server_tick(game: &mut Game<'_>) {
     crate::game::pct_actions::on_server_tick(game);
     crate::game::pct_selftest::on_server_tick(game);
     crate::game::pct_pace_log::on_server_tick(game);
+    crate::game::pct_groups::on_server_tick(game, ticks);
     crate::game::pct_mining::merge_prefetched(game);
     crate::game::pct_mining::apply_piston_moves(game);
     crate::game::pct_mining::apply_explosions(game);
