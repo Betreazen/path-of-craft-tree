@@ -8,7 +8,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const read = (...parts) => readFileSync(join(ROOT, ...parts), 'utf8');
+// Line ends are normalised: a Windows checkout with core.autocrlf has CRLF files.
+const read = (...parts) => readFileSync(join(ROOT, ...parts), 'utf8').replace(/\r\n/g, '\n');
 const MOD = 'mixins/path_of_craft_tree';
 
 const tree = JSON.parse(read(MOD, 'data/tree.json'));

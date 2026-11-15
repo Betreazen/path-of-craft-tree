@@ -1,6 +1,6 @@
 'use strict';
 // A command palette in the manner of cmdk: Ctrl+K or "/" opens it, typing searches every page and
-// all 995 nodes (name, what they give, branch), arrows move, Enter opens, Esc closes.
+// all nodes (name, what they give, branch), arrows move, Enter opens, Esc closes.
 (function () {
   const S = window.PCTS;
   const SP = window.PCTSprites;

@@ -99,6 +99,27 @@ pub struct Branch {
     /// The emblem's icon id.
     #[serde(default)]
     pub icon: Option<String>,
+    /// The mastery title at the highest mastery rank, the branch's own.
+    #[serde(default)]
+    pub legend: Option<String>,
+}
+
+/// The slow scale after a branch's last level: it keeps counting the branch's experience, pays
+/// no points and only gives a rank and a title. `curve.max_level` is the highest mastery rank.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct Mastery {
+    pub curve: Curve,
+    /// The title of each rank from the first; the highest rank uses the branch's `legend`.
+    #[serde(default)]
+    pub titles: Vec<String>,
+}
+
+/// The mastery title a player shows: whose branch, at which rank, and its text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Title {
+    pub branch: String,
+    pub rank: u32,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -145,6 +166,9 @@ struct RawTree {
     /// Numbers by id: a mob's health, a crop's ripe age.
     #[serde(default)]
     numbers: BTreeMap<String, BTreeMap<String, f64>>,
+    /// Trees without it have no mastery: every rank stays 0.
+    #[serde(default)]
+    mastery: Option<Mastery>,
     nodes: Vec<Node>,
 }
 
@@ -164,8 +188,11 @@ pub struct Tree {
     pub nodes: BTreeMap<u16, Node>,
     /// For each branch, the effect key that grows with its level.
     pub level_bonus: BTreeMap<String, String>,
+    pub mastery: Option<Mastery>,
     /// The total experience at the end of each level, from the first: levels are looked up here.
     level_ends: Vec<f64>,
+    /// The same for mastery ranks, counted from the end of the last level.
+    mastery_ends: Vec<f64>,
 }
 
 /// The total experience each level of `curve` ends at. The steps are whole numbers, so the sums
@@ -177,6 +204,19 @@ fn level_ends(curve: &Curve) -> Vec<f64> {
             Some(*total)
         })
         .collect()
+}
+
+/// The step reached on a scale whose steps end at `ends`, and how far into the next one (0 to
+/// 1); past the last step, the step count and 1.
+fn progress_on(ends: &[f64], xp: f64) -> (u32, f64) {
+    let reached = ends.partition_point(|end| *end <= xp);
+    // Bounded by a curve's max_level, which is a u32.
+    let step = reached as u32;
+    let Some(end) = ends.get(reached) else {
+        return (step, 1.0);
+    };
+    let start = reached.checked_sub(1).map_or(0.0, |below| ends[below]);
+    (step, (xp - start) / (end - start))
 }
 
 /// Adds experience to a branch; the branch name is copied only the first time it earns any.
@@ -265,6 +305,9 @@ pub struct Profile {
     /// restart does not forget them. The client is never sent this.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub placed_falling: BTreeMap<String, u32>,
+    /// The branch whose mastery title the player chose to show; none shows the highest one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
 }
 
 /// What the client is sent of a profile: everything but the one-time rewards, which only the
@@ -276,6 +319,8 @@ pub struct ClientProfile<'a> {
     xp: &'a BTreeMap<String, f64>,
     general_xp: f64,
     disabled: &'a Allocated,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    title: &'a Option<String>,
 }
 
 impl Profile {
@@ -287,6 +332,7 @@ impl Profile {
             xp: &self.xp,
             general_xp: self.general_xp,
             disabled: &self.disabled,
+            title: &self.title,
         }
     }
 
@@ -395,13 +441,20 @@ fn default_machine_share() -> f64 {
     0.5
 }
 
+fn check_curve(curve: &Curve, what: &str) -> Result<(), String> {
+    if curve.coefficient <= 0.0 || curve.exponent <= 0.0 || curve.max_level == 0 {
+        return Err(format!(
+            "{what} must have a positive coefficient, exponent and max_level"
+        ));
+    }
+    Ok(())
+}
+
 fn check_tree(raw: &RawTree) -> Result<(), String> {
     if !(0.0..=1.0).contains(&raw.machine_share) {
         return Err("machine_share must be between 0 and 1".to_owned());
     }
-    if raw.curve.coefficient <= 0.0 || raw.curve.exponent <= 0.0 || raw.curve.max_level == 0 {
-        return Err("curve must have a positive coefficient, exponent and max_level".to_owned());
-    }
+    check_curve(&raw.curve, "curve")?;
     if !(0.0..=1.0).contains(&raw.general_share) || !(0.0..=1.0).contains(&raw.cross_share) {
         return Err("general_share and cross_share must be between 0 and 1".to_owned());
     }
@@ -433,6 +486,13 @@ impl Tree {
             check_node(node, &raw, &nodes)?;
         }
         let level_ends = level_ends(&raw.curve);
+        let mastery_ends = match &raw.mastery {
+            Some(mastery) => {
+                check_curve(&mastery.curve, "mastery curve")?;
+                self::level_ends(&mastery.curve)
+            }
+            None => Vec::new(),
+        };
         Ok(Tree {
             start: raw.start,
             general_share: raw.general_share,
@@ -447,7 +507,9 @@ impl Tree {
             lists: raw.lists,
             numbers: raw.numbers,
             nodes: with_symmetric_links(nodes),
+            mastery: raw.mastery,
             level_ends,
+            mastery_ends,
         })
     }
 
@@ -471,16 +533,82 @@ impl Tree {
 
     /// The level `xp` reaches, and how far it is into the next one (0 to 1).
     pub fn level_progress(&self, xp: f64) -> (u32, f64) {
-        let reached = self.level_ends.partition_point(|end| *end <= xp);
-        let Some(end) = self.level_ends.get(reached) else {
-            return (self.curve.max_level, 1.0);
+        progress_on(&self.level_ends, xp)
+    }
+
+    /// The mastery rank a branch's experience `xp` reaches, and how far it is into the next one
+    /// (0 to 1). Mastery counts only what was earned after the last level: before it, (0, 0).
+    pub fn mastery_progress(&self, xp: f64) -> (u32, f64) {
+        let cap = self.level_ends.last().copied().unwrap_or(0.0);
+        if self.mastery_ends.is_empty() || xp < cap {
+            return (0, 0.0);
+        }
+        progress_on(&self.mastery_ends, xp - cap)
+    }
+
+    /// A branch's mastery rank: 0 until its last level, then up to the mastery curve's highest.
+    /// The window shows it next to the branch's level.
+    pub fn mastery_rank(&self, profile: &Profile, branch: &str) -> u32 {
+        self.mastery_progress(profile.xp.get(branch).copied().unwrap_or(0.0))
+            .0
+    }
+
+    /// The highest mastery rank, 0 for a tree without mastery.
+    pub fn max_mastery(&self) -> u32 {
+        self.mastery.as_ref().map_or(0, |m| m.curve.max_level)
+    }
+
+    /// The title a branch's mastery rank gives; none at rank 0.
+    pub fn mastery_title(&self, branch: &str, rank: u32) -> Option<String> {
+        let mastery = self.mastery.as_ref()?;
+        let rank = rank.min(mastery.curve.max_level);
+        let index = usize::try_from(rank.checked_sub(1)?).ok()?;
+        let legend = self.branches.get(branch).and_then(|b| b.legend.as_ref());
+        match legend {
+            Some(legend) if rank == mastery.curve.max_level => Some(legend.clone()),
+            _ => mastery.titles.get(index).or(mastery.titles.last()).cloned(),
+        }
+    }
+
+    /// The title the player shows: the branch they chose while it has a mastery rank, otherwise
+    /// the highest rank (the most experience on a tie).
+    pub fn shown_title(&self, profile: &Profile) -> Option<Title> {
+        let ranked = |branch: &str| {
+            let xp = profile.xp.get(branch).copied().unwrap_or(0.0);
+            let rank = self.mastery_progress(xp).0;
+            (rank > 0).then_some((rank, xp))
         };
-        let start = reached
-            .checked_sub(1)
-            .map_or(0.0, |below| self.level_ends[below]);
-        // Bounded by max_level, which is a u32.
-        let level = reached as u32;
-        (level, (xp - start) / (end - start))
+        let chosen = profile
+            .title
+            .as_deref()
+            .filter(|b| self.branches.contains_key(*b))
+            .and_then(|b| ranked(b).map(|(rank, _)| (b, rank)));
+        let (branch, rank) = chosen.or_else(|| {
+            self.branches
+                .keys()
+                .filter_map(|b| ranked(b).map(|found| (b.as_str(), found)))
+                .max_by(|(_, a), (_, b)| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)))
+                .map(|(b, (rank, _))| (b, rank))
+        })?;
+        Some(Title {
+            branch: branch.to_owned(),
+            rank,
+            text: self.mastery_title(branch, rank)?,
+        })
+    }
+
+    /// The profile with `branch`'s title chosen, or the automatic one for `None`; refused for a
+    /// branch without a mastery rank.
+    pub fn choose_title(&self, profile: &Profile, branch: Option<&str>) -> Option<Profile> {
+        if let Some(branch) = branch
+            && (!self.branches.contains_key(branch) || self.mastery_rank(profile, branch) == 0)
+        {
+            return None;
+        }
+        Some(Profile {
+            title: branch.map(str::to_owned),
+            ..profile.clone()
+        })
     }
 
     pub fn branch_level(&self, profile: &Profile, branch: &str) -> u32 {
@@ -817,6 +945,7 @@ impl Tree {
             seen: saved.seen.clone(),
             disabled: Allocated::new(),
             placed_falling: saved.placed_falling.clone(),
+            title: saved.title.clone(),
         };
         // Kept up to date rank by rank, instead of recounting every rank before each one.
         let mut points = self.points(&kept);
@@ -1139,6 +1268,143 @@ mod tests {
         assert!(!dropped);
         assert_eq!(loaded, once);
         assert!(tree.load_saved(b"not json").is_err());
+    }
+
+    /// Levels end at 10, 30 and 60 experience; mastery ranks 100, 300 and 600 after that.
+    const MASTERY_TREE: &str = r#"{
+        "start": 0, "general_share": 0.5, "cross_share": 0.8,
+        "curve": {"coefficient": 10.0, "exponent": 1.0, "max_level": 3},
+        "mastery": {"curve": {"coefficient": 100.0, "exponent": 1.0, "max_level": 3},
+                    "titles": ["Знаток", "Умелец", "Мастер"]},
+        "branches": {"mining": {"name": "M", "legend": "Владыка недр"}, "fishing": {"name": "F"}},
+        "nodes": [{"id": 0, "x": 0, "y": 0, "icon": "a", "name": "s", "kind": "start"}]
+    }"#;
+
+    fn mastered(xp: &[(&str, f64)]) -> (Tree, Profile) {
+        let tree = Tree::parse(MASTERY_TREE.as_bytes()).unwrap();
+        let mut profile = tree.new_profile();
+        for (branch, amount) in xp {
+            profile.xp.insert((*branch).to_owned(), *amount);
+        }
+        (tree, profile)
+    }
+
+    #[test]
+    fn mastery_counts_only_experience_after_the_last_level() {
+        let (tree, _) = mastered(&[]);
+        assert_eq!(tree.max_mastery(), 3);
+        assert_eq!(tree.mastery_progress(0.0), (0, 0.0));
+        assert_eq!(tree.mastery_progress(59.0), (0, 0.0));
+        assert_eq!(tree.mastery_progress(60.0), (0, 0.0));
+        assert_eq!(tree.mastery_progress(110.0), (0, 0.5));
+        assert_eq!(tree.mastery_progress(160.0), (1, 0.0));
+        assert_eq!(tree.mastery_progress(260.0), (1, 0.5));
+        assert_eq!(tree.mastery_progress(659.0).0, 2);
+        assert_eq!(tree.mastery_progress(660.0), (3, 1.0));
+        assert_eq!(tree.mastery_progress(1.0e12), (3, 1.0));
+        // Levels are untouched: the branch stays at its last level.
+        assert_eq!(tree.level_progress(1.0e12), (3, 1.0));
+    }
+
+    #[test]
+    fn a_tree_without_mastery_never_gives_a_rank_or_title() {
+        let tree = tree();
+        let mut profile = tree.new_profile();
+        profile.xp.insert("mining".to_owned(), 1.0e12);
+        assert_eq!(tree.max_mastery(), 0);
+        assert_eq!(tree.mastery_rank(&profile, "mining"), 0);
+        assert_eq!(tree.shown_title(&profile), None);
+        assert_eq!(tree.choose_title(&profile, Some("mining")), None);
+    }
+
+    #[test]
+    fn mastery_titles_follow_the_rank_and_the_last_is_the_branch_legend() {
+        let (tree, _) = mastered(&[]);
+        assert_eq!(tree.mastery_title("mining", 0), None);
+        assert_eq!(tree.mastery_title("mining", 1).as_deref(), Some("Знаток"));
+        assert_eq!(tree.mastery_title("mining", 2).as_deref(), Some("Умелец"));
+        assert_eq!(
+            tree.mastery_title("mining", 3).as_deref(),
+            Some("Владыка недр")
+        );
+        assert_eq!(
+            tree.mastery_title("mining", 9).as_deref(),
+            Some("Владыка недр")
+        );
+        // A branch without a legend keeps the generic title of the highest rank.
+        assert_eq!(tree.mastery_title("fishing", 3).as_deref(), Some("Мастер"));
+    }
+
+    #[test]
+    fn the_shown_title_is_the_chosen_branch_or_else_the_highest_rank() {
+        let (tree, profile) = mastered(&[("mining", 200.0), ("fishing", 400.0)]);
+        assert_eq!(tree.mastery_rank(&profile, "mining"), 1);
+        assert_eq!(tree.mastery_rank(&profile, "fishing"), 2);
+        let shown = tree.shown_title(&profile).unwrap();
+        assert_eq!(
+            shown,
+            Title {
+                branch: "fishing".to_owned(),
+                rank: 2,
+                text: "Умелец".to_owned()
+            }
+        );
+        let chosen = tree.choose_title(&profile, Some("mining")).unwrap();
+        assert_eq!(chosen.title.as_deref(), Some("mining"));
+        assert_eq!(tree.shown_title(&chosen).unwrap().text, "Знаток");
+        let automatic = tree.choose_title(&chosen, None).unwrap();
+        assert_eq!(automatic.title, None);
+        assert_eq!(tree.shown_title(&automatic), Some(shown));
+        // On a tie of ranks, the branch with more experience shows.
+        let (tree, tied) = mastered(&[("mining", 300.0), ("fishing", 250.0)]);
+        assert_eq!(tree.shown_title(&tied).unwrap().branch, "mining");
+    }
+
+    #[test]
+    fn a_title_needs_a_mastery_rank_in_a_known_branch() {
+        let (tree, profile) = mastered(&[("mining", 200.0), ("fishing", 100.0)]);
+        assert_eq!(tree.choose_title(&profile, Some("fishing")), None);
+        assert_eq!(tree.choose_title(&profile, Some("nope")), None);
+        assert!(tree.shown_title(&tree.new_profile()).is_none());
+        // A chosen branch that lost its rank (a changed curve) falls back to the highest one.
+        let mut stale = profile.clone();
+        stale.title = Some("fishing".to_owned());
+        assert_eq!(tree.shown_title(&stale).unwrap().branch, "mining");
+    }
+
+    #[test]
+    fn the_title_survives_saving_sanitizing_and_respec_and_reaches_the_client() {
+        let (tree, profile) = mastered(&[("mining", 200.0)]);
+        let chosen = tree.choose_title(&profile, Some("mining")).unwrap();
+        let bytes = serde_json::to_vec(&chosen).unwrap();
+        let (loaded, dropped) = tree.load_saved(&bytes).unwrap();
+        assert!(!dropped);
+        assert_eq!(loaded.title.as_deref(), Some("mining"));
+        assert_eq!(tree.respec(&loaded).title.as_deref(), Some("mining"));
+        let client = serde_json::to_vec(&loaded.for_client()).unwrap();
+        let shown: Profile = serde_json::from_slice(&client).unwrap();
+        assert_eq!(shown.title.as_deref(), Some("mining"));
+        // No title: the field is left out of both files.
+        let plain = serde_json::to_string(&profile.for_client()).unwrap();
+        assert!(!plain.contains("title"), "{plain}");
+        assert!(!serde_json::to_string(&profile).unwrap().contains("title"));
+    }
+
+    #[test]
+    fn a_profile_saved_before_mastery_loads_without_a_title() {
+        let (tree, _) = mastered(&[]);
+        let old = br#"{"layout":2,"ranks":{"0":1},"xp":{"mining":500.0},"general_xp":3.0}"#;
+        let (profile, dropped) = tree.load_saved(old).unwrap();
+        assert!(!dropped);
+        assert_eq!(profile.title, None);
+        assert_eq!(tree.mastery_rank(&profile, "mining"), 2);
+    }
+
+    #[test]
+    fn a_broken_mastery_curve_is_rejected() {
+        let broken = MASTERY_TREE.replacen("\"coefficient\": 100.0", "\"coefficient\": 0.0", 1);
+        let error = Tree::parse(broken.as_bytes()).unwrap_err();
+        assert!(error.contains("mastery curve"), "{error}");
     }
 
     const UPGRADE_TREE: &str = r#"{

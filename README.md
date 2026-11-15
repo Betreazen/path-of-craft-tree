@@ -3,12 +3,12 @@
 # Path-of-craft-tree
 
 **Огромное дерево пассивных умений для Minecraft на [Horizon](https://github.com/horizon-rust/horizon).**
-Копайте, рубите, готовьте, сражайтесь: каждое занятие качает свою профессию, а уровни приносят очки для дерева на 995 узлов.
+Копайте, рубите, готовьте, сражайтесь: каждое занятие качает свою профессию, а уровни приносят очки для дерева на 1200 узлов.
 
 ![Horizon](https://img.shields.io/badge/Horizon-native%20mod-7c4dff)
 ![Minecraft](https://img.shields.io/badge/Minecraft-26.3-3c8527)
 ![Rust](https://img.shields.io/badge/Rust-2024-b7410e?logo=rust)
-![Nodes](https://img.shields.io/badge/узлов-995-f5b800)
+![Nodes](https://img.shields.io/badge/узлов-1200-f5b800)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <img src="docs/images/tree.png" alt="Окно дерева: шестнадцать ветвей вокруг центра, изученные узлы светятся золотом" width="820">
@@ -20,7 +20,8 @@
 Вы получаете опыт профессии за то, чем занимаетесь: кирка качает Шахтёра, удочка Рыбака, лук Стрелка. Уровень профессии понемногу усиливает вас в этом деле и приносит очко, которое тратится в её ветви дерева. Часть опыта идёт ещё и в общую шкалу, а её очки можно потратить в любой ветви, например чтобы подтянуть отстающую.
 
 - **16 профессий в 4 секторах**, 75 уровней у каждой.
-- **995 узлов**: малые прибавки, большие умения и их усилители. 83 узла имеют по два ранга.
+- **1200 узлов**: малые прибавки, большие умения и их усилители. 121 узел имеет по два ранга. Ветвь стоит 79–85 очков, а её 75 уровней дают 75: всё не взять, приходится выбирать.
+- **Мастерство после 75-го уровня**: опыт ветви идёт дальше, в 10 медленных рангов мастерства. Очков и силы они не дают, только титул: от «Знатока» до своего у каждой ветви, например «Владыка недр» у Шахтёра.
 - **285 эффектов**, каждый проверен в игре: копание площадью, падение дерева целиком, жила руды, автоплавка, карманный верстак, возвращение домой, рудный нюх и многое другое.
 - **Честный опыт.** Поставленный блок не даёт опыта, когда его ломаешь. Мобы из спавнера дают четверть. В творческом режиме и за команды опыта нет.
 - **Машины работают на владельца.** Механизмы других модов приносят своему владельцу половину опыта за ту же работу ([как подключить свой мод](docs/machine-reports.md)).
@@ -171,7 +172,7 @@ docs/showcase/               справочник для сайта: данны�
 Флаги: `-BuildProfile dev|performance|release` выбирает профиль сборки, `-Perf` включает счётчики времени горячих путей. Счётчики пишутся в журнал раз в 30 секунд. Лаунчер собирает на компьютере только одну нативную сборку за раз, поэтому `dev.ps1` ждёт, пока закончится чужая, и повторяет запуск, если другая сборка успела начаться первой.
 
 ```powershell
-cargo test                                  # 174 теста
+cargo test                                  # N тестов
 cargo bench --bench rules                   # бенчмарки criterion на профиле «ветерана»
 cargo clippy --all-targets -- -D warnings -A dead_code
 ```
@@ -203,7 +204,7 @@ cargo clippy --all-targets -- -D warnings -A dead_code
 
 ## In English
 
-Path-of-craft-tree is a native mod for [Horizon](https://github.com/horizon-rust/horizon), the Rust reimplementation of Minecraft 26.3. Sixteen professions earn experience from what you actually do (mining, farming, crafting, fighting…), and their levels pay points into a 995-node passive tree with 285 effects. The in-game text is in Russian for now. Install it from the launcher with **Mods → Add from GitHub** and this repository's link, or follow the commands in the «Установка» section above. Native mods run unsandboxed with your rights, so read the source first.
+Path-of-craft-tree is a native mod for [Horizon](https://github.com/horizon-rust/horizon), the Rust reimplementation of Minecraft 26.3. Sixteen professions earn experience from what you actually do (mining, farming, crafting, fighting…), and their levels pay points into a 1200-node passive tree with 285 effects; past the last level a branch keeps counting towards ten cosmetic mastery ranks and titles. The in-game text is in Russian for now. Install it from the launcher with **Mods → Add from GitHub** and this repository's link, or follow the commands in the «Установка» section above. Native mods run unsandboxed with your rights, so read the source first.
 
 ## Лицензия
 

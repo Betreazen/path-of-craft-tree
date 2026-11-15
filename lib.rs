@@ -50,11 +50,16 @@ mod shipped_tree {
         let count = |kind| tree.nodes.values().filter(|node| node.kind == kind).count();
         assert_eq!(count(Kind::Big), 160);
         assert_eq!(count(Kind::Small), 646);
+        assert_eq!(count(Kind::Upgrade), 393);
+        assert_eq!(tree.nodes.len(), 1200);
     }
 
+    /// The owner's rule (2026-11-15): a branch's 75 levels pay 75 points and its nodes cost more,
+    /// so a player chooses; general points can fill a branch, but not all of them.
     #[test]
-    fn every_branch_can_be_filled_with_its_own_points() {
+    fn every_branch_costs_more_than_its_own_points() {
         let tree = shipped();
+        let mut whole_tree = 0;
         for id in tree.branches.keys() {
             let points: u32 = tree
                 .nodes
@@ -62,9 +67,135 @@ mod shipped_tree {
                 .filter(|n| n.branch.as_deref() == Some(id))
                 .map(|n| u32::from(n.max_rank()))
                 .sum();
-            assert!(points <= tree.curve.max_level, "{id} needs {points} points");
-            assert!(points >= 60, "{id} needs only {points} points");
+            let levels = tree.curve.max_level;
+            assert!(points > levels, "{id} costs only {points} points");
+            assert!(points <= levels + 15, "{id} costs {points} points");
+            whole_tree += points;
         }
+        let every_level = tree.curve.max_level * (tree.branches.len() as u32 + 1);
+        assert!(
+            whole_tree > every_level,
+            "{whole_tree} points buy the whole tree"
+        );
+    }
+
+    /// The nodes saved profiles know: ids below this kept their meaning when nodes were added.
+    const OLD_NODES: u16 = 995;
+
+    /// FNV-1a over what each old node is: its name, kind, branch, ranks, effects and its links to
+    /// other old nodes.
+    fn old_numbering_checksum(tree: &Tree) -> u64 {
+        tree.nodes
+            .values()
+            .filter(|node| node.id < OLD_NODES)
+            .map(|node| {
+                let mut links: Vec<u16> = node
+                    .links
+                    .iter()
+                    .copied()
+                    .filter(|link| *link < OLD_NODES)
+                    .collect();
+                links.sort_unstable();
+                format!(
+                    "{}|{}|{:?}|{:?}|{}|{:?}|{links:?}\n",
+                    node.id, node.name, node.kind, node.branch, node.ranks, node.effects
+                )
+            })
+            .flat_map(String::into_bytes)
+            .fold(0xcbf2_9ce4_8422_2325, |hash, byte| {
+                (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+            })
+    }
+
+    /// Taken from the 995-node tree of 0.4.11, the last one before nodes were appended.
+    const OLD_NUMBERING_CHECKSUM: u64 = 0xdffe_0a03_bc42_40b9;
+
+    #[test]
+    fn appended_nodes_keep_the_old_numbering() {
+        let tree = shipped();
+        assert_eq!(
+            old_numbering_checksum(&tree),
+            OLD_NUMBERING_CHECKSUM,
+            "now {:#x}",
+            old_numbering_checksum(&tree)
+        );
+        // Every newer node is a booster after the last upgrade of an old chain or of another new
+        // booster, so nothing old sits behind a node an old profile cannot have.
+        for node in tree.nodes.values().filter(|n| n.id >= OLD_NODES) {
+            assert_eq!(node.kind, Kind::Upgrade, "node {}", node.id);
+            assert!(!node.effects.is_empty() && !node.todo, "node {}", node.id);
+            let behind: Vec<u16> = node
+                .links
+                .iter()
+                .copied()
+                .filter(|l| *l > node.id)
+                .collect();
+            assert!(behind.len() <= 1, "node {} opens {behind:?}", node.id);
+            assert!(behind.iter().all(|l| *l >= OLD_NODES), "node {}", node.id);
+        }
+    }
+
+    #[test]
+    fn a_profile_saved_with_every_old_node_keeps_them_all() {
+        let tree = shipped();
+        let mut saved = tree.new_profile();
+        for (i, branch) in tree.branches.keys().enumerate() {
+            saved.xp.insert(branch.clone(), 1.0e9 + i as f64);
+        }
+        saved.general_xp = 1.0e9;
+        for node in tree.nodes.values().filter(|n| n.id < OLD_NODES) {
+            saved.ranks.insert(node.id, node.max_rank());
+        }
+        saved.title = Some("mining".to_owned());
+        let bytes = serde_json::to_vec(&saved).unwrap();
+        let (loaded, dropped) = tree.load_saved(&bytes).unwrap();
+        assert!(!dropped);
+        assert_eq!(loaded.ranks, saved.ranks);
+        assert_eq!(loaded.title, saved.title);
+    }
+
+    /// The experience a branch has at the end of `level`.
+    fn xp_at_level(tree: &Tree, level: u32) -> f64 {
+        (1..=level).map(|l| tree.xp_for_level(l)).sum()
+    }
+
+    #[test]
+    fn the_shipped_mastery_is_slow_capped_and_titled_per_branch() {
+        let tree = shipped();
+        let cap = xp_at_level(&tree, tree.curve.max_level);
+        assert_eq!(cap, 178_264.0);
+        assert_eq!(tree.max_mastery(), 10);
+        let rank_at = |xp: f64| tree.mastery_progress(xp).0;
+        assert_eq!(rank_at(cap - 1.0), 0);
+        assert_eq!(rank_at(cap), 0);
+        assert_eq!(rank_at(cap + 5_999.0), 0);
+        assert_eq!(rank_at(cap + 6_000.0), 1);
+        // The ranks need floor(6000 · r^1.25) each: all ten about 528 000 more experience, about
+        // 148 hours at the 3 565 an hour the pace aims for, each a little longer than the last.
+        let steps: Vec<f64> = (1..=10u32)
+            .map(|r| (6000.0 * f64::from(r).powf(1.25)).floor())
+            .collect();
+        assert!(steps.windows(2).all(|w| w[1] > w[0]));
+        let all: f64 = steps.iter().sum();
+        assert_eq!(rank_at(cap + all - 1.0), 9);
+        assert_eq!(rank_at(cap + all), 10);
+        assert_eq!(tree.mastery_progress(cap + all * 10.0), (10, 1.0));
+        assert!((500_000.0..560_000.0).contains(&all), "{all}");
+        for (id, branch) in &tree.branches {
+            let legend = branch.legend.as_deref().expect("every branch has a legend");
+            assert_eq!(tree.mastery_title(id, 10).as_deref(), Some(legend));
+            for rank in 1..10 {
+                let title = tree.mastery_title(id, rank).expect("a title per rank");
+                assert_ne!(title, legend, "{id} {rank}");
+            }
+        }
+        // Mastery pays no points: the branch's own points stop at its last level.
+        let mut profile = tree.new_profile();
+        profile.xp.insert("mining".to_owned(), cap + all);
+        assert_eq!(tree.mastery_rank(&profile, "mining"), 10);
+        assert_eq!(tree.branch_points(&profile, "mining"), tree.curve.max_level);
+        let shown = tree.shown_title(&profile).expect("a title");
+        assert_eq!((shown.branch.as_str(), shown.rank), ("mining", 10));
     }
 
     /// General points the slow way the rules first counted them, branch by branch.
@@ -129,6 +260,7 @@ mod shipped_tree {
         kept.general_xp = saved.general_xp;
         kept.seen = saved.seen.clone();
         kept.placed_falling = saved.placed_falling.clone();
+        kept.title = saved.title.clone();
         let mut frontier = std::collections::VecDeque::from([tree.start]);
         while let Some(id) = frontier.pop_front() {
             let mut links = tree.nodes[&id].links.clone();
@@ -282,7 +414,9 @@ mod shipped_tree {
     }
 
     /// Taken from the zone map of the approved design; regenerating data/tree.json changes it.
-    const ZONE_CHECKSUM: u64 = 0x5e94_290d_004c_3059;
+    /// Retaken 2026-11-15 for the 1200-node tree: the spines are as approved, the booster chains
+    /// are longer and the side clusters were laid out again.
+    const ZONE_CHECKSUM: u64 = 0x302e_2280_c568_0def;
 
     /// A link's look the way paint.rs worked it out every frame from a fresh `Standing`.
     fn link_by_standing(s: &crate::look::Standing, a: u16, b: u16) -> crate::look::LinkLook {
@@ -420,7 +554,7 @@ mod shipped_tree {
                 .all(|b| b.colour.is_some() && b.icon.is_some())
         );
         let ranked: Vec<_> = tree.nodes.values().filter(|n| n.max_rank() > 1).collect();
-        assert_eq!(ranked.len(), 83);
+        assert_eq!(ranked.len(), 121);
         for node in ranked {
             assert_eq!(
                 node.rank_descriptions.len(),
