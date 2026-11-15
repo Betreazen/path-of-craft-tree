@@ -1,0 +1,49 @@
+name: Ошибка · Bug report
+description: Что-то работает не так, как описано · Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что сообщаете об ошибке. Чем точнее шаги, тем быстрее её найдём.
+        Thanks for the report. Write in Russian or English.
+  - type: input
+    id: version
+    attributes:
+      label: Версия мода · Mod version
+      description: "`[mod] version` в `horizon-mixin.toml` или тег, с которого ставили · the tag you installed"
+      placeholder: "0.5.1"
+    validations:
+      required: true
+  - type: input
+    id: horizon
+    attributes:
+      label: Коммит Horizon · Horizon revision
+      placeholder: "7e4e421"
+  - type: dropdown
+    id: where
+    attributes:
+      label: Где · Where
+      options:
+        - Одиночная игра · Single player
+        - Сервер с хостом (LAN) · LAN host
+        - Выделенный сервер · Dedicated server
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги · Steps
+      description: Что делали, что ожидали увидеть, что произошло · What you did, what you expected, what happened
+      placeholder: |
+        1. Изучил узел «Жила»
+        2. Сломал железную руду киркой
+        3. Ожидал: вся жила ломается. Произошло: …
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Журнал · Log
+      description: Строки с `path_of_craft_tree` из журнала игры или сервера · Lines with `path_of_craft_tree` from the game or server log
+      render: text

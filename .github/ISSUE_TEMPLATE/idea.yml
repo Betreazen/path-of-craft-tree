@@ -1,0 +1,21 @@
+name: Идея или баланс · Idea or balance
+description: Новый узел, правка баланса, удобство · A new node, a balance change, a convenience
+labels: [idea]
+body:
+  - type: input
+    id: branch
+    attributes:
+      label: Ветвь · Branch
+      placeholder: "Шахтёр · Miner"
+  - type: textarea
+    id: idea
+    attributes:
+      label: Что предлагаете · The idea
+      description: Что изменить и почему: какой опыт в игре это улучшит · What to change and why
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Числа · Numbers
+      description: Если это баланс: сколько часов на ветвь сейчас и сколько, по-вашему, должно быть · For balance: hours per branch now and what you expect

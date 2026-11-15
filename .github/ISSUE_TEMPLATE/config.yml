@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Справочник по профессиям · Profession reference
+    url: https://betreazen.github.io/path-of-craft-tree/showcase/
+    about: Все узлы, эффекты и источники опыта с живым деревом · Every node, effect and XP source with a live tree
+  - name: Horizon
+    url: https://github.com/horizon-rust/horizon
+    about: Вопросы о самом движке и лаунчере · Questions about the engine and launcher
