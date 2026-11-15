@@ -574,7 +574,7 @@ bindings = [
 # The experience bar on the screen (hud_bar.rs). By target, as other mods of the pack draw on
 # the HUD: the hook needs no trait mod then.
 [[injection]]
-id = "hud_bar"
+id = "hud_bar_draw"
 target = "horizon_client::game::native_hooks::Game<'_>::native_hud"
 kind = "HEAD"
 helper = "hud_bar_draw.rs"
