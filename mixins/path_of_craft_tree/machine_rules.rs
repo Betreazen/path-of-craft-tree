@@ -184,7 +184,7 @@ pub enum Report {
         bottles: u32,
     },
     /// Work paid by one action of the tree, `times` over: repairs, breeding, shearing, honey,
-    /// brushing and enchanting levels.
+    /// brushing, enchanting levels and mixed buckets.
     Work { owner: u128, work: Work, times: u32 },
 }
 
@@ -203,16 +203,21 @@ pub enum Work {
     Brush,
     /// Count: enchanting levels charged, as a table would charge them (1 to 3 an item).
     Enchant,
+    /// Count: buckets a mixer made (RustCraft's nutrient solution and catalysts): Alchemy, half a
+    /// brewing run a bucket (since 0.5.2).
+    Mix,
 }
 
 impl Work {
-    const ALL: [(&'static str, Work); 6] = [
+    /// Each work with the word its report is sent as.
+    pub const ALL: [(&'static str, Work); 7] = [
         ("repair", Work::Repair),
         ("breed", Work::Breed),
         ("shear", Work::Shear),
         ("honey", Work::Honey),
         ("brush", Work::Brush),
         ("enchant", Work::Enchant),
+        ("mix", Work::Mix),
     ];
 
     fn from_word(word: &str) -> Option<Work> {
@@ -220,6 +225,19 @@ impl Work {
             .iter()
             .find(|(name, _)| *name == word)
             .map(|(_, work)| *work)
+    }
+
+    /// The tree's action that pays this work, once a unit.
+    pub fn action(self) -> &'static str {
+        match self {
+            Work::Repair => "act:repair",
+            Work::Breed => "act:breed",
+            Work::Shear => "act:shear",
+            Work::Honey => "act:honey",
+            Work::Brush => "act:brush",
+            Work::Enchant => "act:enchant",
+            Work::Mix => "act:mix",
+        }
     }
 }
 
@@ -487,6 +505,36 @@ mod tests {
                 }),
                 "{word}"
             );
+        }
+    }
+
+    #[test]
+    fn a_mix_report_counts_the_mixers_buckets_for_alchemy() {
+        assert_eq!(
+            parse("mix 0123abcd456789ef0123456789abcdef 2"),
+            Ok(Report::Work {
+                owner: OWNER,
+                work: Work::Mix,
+                times: 2,
+            })
+        );
+        assert_eq!(Work::Mix.action(), "act:mix");
+        for line in [
+            "mix 0123abcd456789ef0123456789abcdef",
+            "mix 0123abcd456789ef0123456789abcdef 0",
+            "mix 0123abcd456789ef0123456789abcdef 1 rustcraft:solution",
+        ] {
+            assert!(parse(line).is_err(), "accepted {line:?}");
+        }
+    }
+
+    #[test]
+    fn every_work_pays_its_own_action() {
+        let actions: std::collections::BTreeSet<_> =
+            Work::ALL.iter().map(|(_, work)| work.action()).collect();
+        assert_eq!(actions.len(), Work::ALL.len());
+        for (word, work) in Work::ALL {
+            assert_eq!(work.action(), format!("act:{word}"), "{word}");
         }
     }
 

@@ -785,6 +785,7 @@ fn solo_scenarios(tree: &Tree, spots: &Spots) -> Vec<Solo> {
         ("honey", "act:honey", 1.0),
         ("brush", "act:brush", 1.0),
         ("enchant", "act:enchant", 1.0),
+        ("mix", "act:mix", 1.0),
     ] {
         list.push(Solo {
             name: work_name(word),
@@ -941,6 +942,7 @@ fn work_name(word: &str) -> &'static str {
         "shear" => "work_shear_pays",
         "honey" => "work_honey_pays",
         "brush" => "work_brush_pays",
+        "mix" => "work_mix_pays",
         _ => "work_enchant_pays_per_level",
     }
 }

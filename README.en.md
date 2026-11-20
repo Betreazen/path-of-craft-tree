@@ -124,10 +124,10 @@ Update: `horizon-launcher mods update-github --trust-native-code`, then `native-
 A dedicated server runs a separately built engine:
 
 ```powershell
-git clone --branch v0.5.1 https://github.com/Betreazen/path-of-craft-tree
+git clone --branch v0.5.2 https://github.com/Betreazen/path-of-craft-tree
 horizon-launcher native-build path-of-craft-tree/mixins/path_of_craft_tree `
-    --server-output C:\horizon-engines\pct-0.5.1 --version <Horizon version> --trust-native-code
-horizon-server --dir <server folder> config set engine.path=C:\horizon-engines\pct-0.5.1\horizon-engine.exe
+    --server-output C:\horizon-engines\pct-0.5.2 --version <Horizon version> --trust-native-code
+horizon-server --dir <server folder> config set engine.path=C:\horizon-engines\pct-0.5.2\horizon-engine.exe
 horizon-server --dir <server folder> restart
 ```
 

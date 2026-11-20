@@ -126,10 +126,10 @@ horizon-launcher native-build --trust-native-code
 Сервер запускает отдельный собранный движок:
 
 ```powershell
-git clone --branch v0.5.1 https://github.com/Betreazen/path-of-craft-tree
+git clone --branch v0.5.2 https://github.com/Betreazen/path-of-craft-tree
 horizon-launcher native-build path-of-craft-tree/mixins/path_of_craft_tree `
-    --server-output C:\horizon-engines\pct-0.5.1 --version <версия Horizon> --trust-native-code
-horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.5.1\horizon-engine.exe
+    --server-output C:\horizon-engines\pct-0.5.2 --version <версия Horizon> --trust-native-code
+horizon-server --dir <папка сервера> config set engine.path=C:\horizon-engines\pct-0.5.2\horizon-engine.exe
 horizon-server --dir <папка сервера> restart
 ```
 

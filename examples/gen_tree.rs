@@ -1192,6 +1192,9 @@ fn branch_xp(id: &str) -> Map<String, Value> {
         ],
         "alchemy" => vec![
             action("brew", 12.0),
+            // A RustCraft mixer's bucket (solution or a catalyst), machines only: half a brewing
+            // run of three bottles.
+            action("mix", 18.0),
             action("nether_wart", 3.0),
             action("brew_first", 25.0),
         ],

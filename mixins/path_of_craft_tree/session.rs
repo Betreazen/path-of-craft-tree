@@ -167,7 +167,7 @@ pub fn per_hour(xp: f64, seconds: f64) -> Option<f64> {
 }
 
 /// The names of the actions experience is paid for (`act:*` in the tree).
-const ACTIONS: [(&str, &str); 44] = [
+const ACTIONS: [(&str, &str); 45] = [
     ("act:advancement", "достижения"),
     ("act:biome", "новые биомы"),
     ("act:block", "блоки"),
@@ -199,6 +199,7 @@ const ACTIONS: [(&str, &str); 44] = [
     ("act:junk", "хлам с удочки"),
     ("act:kill", "мобы"),
     ("act:milk", "дойка"),
+    ("act:mix", "смеситель"),
     ("act:nether_wart", "незерский нарост"),
     ("act:none", "прочее"),
     ("act:path", "тропинки"),

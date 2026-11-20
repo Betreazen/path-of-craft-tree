@@ -321,18 +321,9 @@ pub fn on_machine_milk(game: &mut Game<'_>, owner: u128, entity: u32) {
     }
 }
 
-/// Paid work of a machine: `action` `times` over at the machine share.
+/// Paid work of a machine: its action `times` over at the machine share.
 pub fn on_machine_work(game: &mut Game<'_>, owner: u128, work: Work, times: u32) {
-    let times = f64::from(times);
-    let (action, times) = match work {
-        Work::Repair => ("act:repair", times),
-        Work::Breed => ("act:breed", times),
-        Work::Shear => ("act:shear", times),
-        Work::Honey => ("act:honey", times),
-        Work::Brush => ("act:brush", times),
-        Work::Enchant => ("act:enchant", times),
-    };
-    earn_for_owner(game, owner, action, times);
+    earn_for_owner(game, owner, work.action(), f64::from(times));
 }
 
 /// A machine's brews filled `bottles` bottles: paid per bottle, as a player's stand. Machines
